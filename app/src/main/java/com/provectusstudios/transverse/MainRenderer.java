@@ -52,7 +52,8 @@ public class MainRenderer implements GLSurfaceView.Renderer {
 
         Textures.loadTextures(context);
 
-        Text.loadFont(context.getResources().getXml(R.xml.arial), Textures.fontTexture, "Arial");
+        Text.loadFont(context.getResources().getXml(R.xml.arial), Textures.arialFontTexture, "Arial");
+        Text.loadFont(context.getResources().getXml(R.xml.orbitron), Textures.orbitronFontTexture, "Orbitron");
 
         GLES20.glEnable(GLES20.GL_DITHER);
         GLES20.glEnable(GLES20.GL_BLEND);

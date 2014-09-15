@@ -82,9 +82,9 @@ public class Text {
         private int[] charYOffset;
         private int[] charXAdvance;
 
-        private char[] kerningFirstChar;
-        private char[] kerningSecondChar;
-        private int[] kerningValue;
+        private char[] kerningFirstChar = new char[0];
+        private char[] kerningSecondChar = new char[0];
+        private int[] kerningValue = new int[0];
 
         private float[] vertices;
         private float[] uvCoordinates;
