@@ -6,4 +6,5 @@ package com.provectusstudios.transverse;
 public interface Shape {
     public void refresh();
     public void draw(int verticeMatrixHandle);
+    public boolean containsPoint(float x, float y);
 }

@@ -69,4 +69,12 @@ public class Rectangle implements Shape {
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, drawOrder.length,
                 GLES20.GL_UNSIGNED_SHORT, drawOrderBuffer);
     }
+
+    @Override
+    public boolean containsPoint(float x, float y) {
+        if (x >= this.x && x <= this.x + width && y >= this.y && y <= this.y + height) {
+            return true;
+        }
+        return false;
+    }
 }

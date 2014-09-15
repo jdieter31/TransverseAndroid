@@ -102,4 +102,14 @@ public class Circle implements Shape {
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, precision + 2);
         }
     }
+
+    @Override
+    public boolean containsPoint(float x, float y) {
+        float dx = x - centerX;
+        float dy = y - centerY;
+        if (Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2)) <= radius) {
+            return true;
+        }
+        return false;
+    }
 }

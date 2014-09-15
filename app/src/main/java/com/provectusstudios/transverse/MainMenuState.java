@@ -1,6 +1,6 @@
 package com.provectusstudios.transverse;
 
-import android.opengl.Matrix;
+import android.util.Log;
 import android.view.MotionEvent;
 
 /**
@@ -14,27 +14,42 @@ public class MainMenuState implements GameState {
     private MainRenderer mainRenderer;
     private SolidRenderType solidRenderType;
 
-    private Text testText;
+    private Text titleText;
+    private RoundedRectangle testButton;
 
     public MainMenuState(MainRenderer mainRenderer) {
         this.mainRenderer = mainRenderer;
-        testText = new Text();
-        testText.setFont("Orbitron");
-        testText.setText("transverseTRANSVERSE");
-        testText.setTextSize(30);
+        titleText = new Text();
+        titleText.setFont("Arial");
+        titleText.setText("Main Menu");
+        titleText.setTextSize(30);
         solidRenderType = new SolidRenderType();
         solidRenderType.setColor(.204f, .588f, .753f);
         solidRenderType.setAlpha(1);
+        testButton = new RoundedRectangle();
+        testButton.setWidth(150);
+        testButton.setHeight(75);
+        testButton.setCornerRadius(10);
+        testButton.setPrecision(90);
     }
 
     @Override
     public void handleTouchEvent(MotionEvent event) {
-
+        float density = mainRenderer.getContext().getResources().getDisplayMetrics().density;
+        float dpX = event.getX()/density;
+        float dpY = event.getY()/density;
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                if (testButton.containsPoint(dpX, dpY)) {
+                    Log.d("", "Button Pushed");
+                }
+        }
     }
 
     @Override
     public void onDrawFrame() {
-        solidRenderType.drawText(testText);
+        solidRenderType.drawText(titleText);
+        solidRenderType.drawShape(testButton);
     }
 
     @Override
@@ -42,8 +57,15 @@ public class MainMenuState implements GameState {
         this.width = width;
         this.height = height;
         this.viewProjectionMatrix = viewProjectionMatrix;
-        testText.setOrigin(width/2-testText.getWidth()/2, height/2 - 15, 0);
-        testText.refresh();
+        titleText.setOrigin(width/2- titleText.getWidth()/2, height/2 - 15, 0);
+        titleText.refresh();
+        testButton.setCenter(width/2, height/2 + 70, 0);
+        testButton.refresh();
         solidRenderType.setMatrix(viewProjectionMatrix);
     }
+
+    public void createGraphics() {
+
+    }
+
 }

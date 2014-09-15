@@ -1,6 +1,7 @@
 package com.provectusstudios.transverse;
 
 import android.opengl.GLES20;
+import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -172,5 +173,25 @@ public class RoundedRectangle implements Shape {
                 0, bottomRightVerticeBuffer);
 
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, precision + 1);
+    }
+
+    @Override
+    public boolean containsPoint(float x, float y) {
+        float topLeftX = centerX - width/2;
+        float topLeftY = centerY - height/2;
+        float bottomRightX = centerX + width/2;
+        float bottomRightY = centerY + height/2;
+        if (x >= topLeftX && x <= bottomRightX && y >= topLeftY + cornerRadius && y <= bottomRightY - cornerRadius) {
+            return true;
+        } else if (x >= topLeftX + cornerRadius && x <= bottomRightX - cornerRadius && y >= topLeftY && y <= bottomRightY) {
+            return true;
+        } else {
+            float dx = Math.min(Math.abs((topLeftX + cornerRadius) - x), Math.abs((bottomRightX - cornerRadius) - x));
+            float dy = Math.min(Math.abs((topLeftY + cornerRadius) - y), Math.abs((bottomRightY - cornerRadius) - y));
+            if (Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2)) <= cornerRadius) {
+                return true;
+            }
+        }
+        return false;
     }
 }
