@@ -8,6 +8,6 @@ public interface RenderType {
     public void drawShape(Shape shape);
     public void setMatrix(float[] matrix);
     public void drawImage(Image image);
-    public void drawLine(Line line);
+    public void drawAlphaShape(AlphaShape line);
     public void setAlpha(float alpha);
 }

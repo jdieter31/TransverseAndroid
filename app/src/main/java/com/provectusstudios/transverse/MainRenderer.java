@@ -29,7 +29,7 @@ public class MainRenderer implements GLSurfaceView.Renderer {
     private float[] viewMatrix = new float[16];
     private float[] viewAndProjectionMatrix = new float[16];
 
-    private static final boolean SHOULD_LOG_FPS = false;
+    private static final boolean SHOULD_LOG_FPS = true;
 
     public MainRenderer(Context context) {
         this.context = context;

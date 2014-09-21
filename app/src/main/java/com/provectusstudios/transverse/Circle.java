@@ -64,9 +64,9 @@ public class Circle implements Shape {
             //Make all angles negatives since y is inverted and we want angle to go clockwise
             float totalAngle = -(endAngle - startAngle);
             for (int i = 0; i <= precision; i++) {
-                verticeArray[i * 3] = (float) (radius * Math.cos(((float) i) / precision * totalAngle - startAngle) + centerX);
-                verticeArray[i * 3 + 1] = (float) (radius * Math.sin(((float) i) / precision * totalAngle - startAngle) + centerY);
-                verticeArray[i * 3 + 2] = centerZ;
+                verticeArray[(i + 1) * 3] = (float) (radius * Math.cos(((float) i) / precision * totalAngle - startAngle) + centerX);
+                verticeArray[(i + 1) * 3 + 1] = (float) (radius * Math.sin(((float) i) / precision * totalAngle - startAngle) + centerY);
+                verticeArray[(i + 1) * 3 + 2] = centerZ;
             }
             verticeBuffer = ByteBuffer.allocateDirect(verticeArray.length * 4)
                     .order(ByteOrder.nativeOrder()).asFloatBuffer();

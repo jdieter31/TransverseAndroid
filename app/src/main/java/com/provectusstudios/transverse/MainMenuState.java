@@ -1,6 +1,6 @@
 package com.provectusstudios.transverse;
 
-import android.util.Log;
+import android.support.v4.view.MotionEventCompat;
 import android.view.MotionEvent;
 
 /**
@@ -36,12 +36,16 @@ public class MainMenuState implements GameState {
     @Override
     public void handleTouchEvent(MotionEvent event) {
         float density = mainRenderer.getContext().getResources().getDisplayMetrics().density;
+        int pointer = MotionEventCompat.getActionIndex(event);
+        float x = MotionEventCompat.getX(event, pointer);
+        float y = MotionEventCompat.getY(event, pointer);
         float dpX = event.getX()/density;
         float dpY = event.getY()/density;
-        switch (event.getAction()) {
+        int action = MotionEventCompat.getActionMasked(event);
+        switch (action) {
             case MotionEvent.ACTION_DOWN:
                 if (testButton.containsPoint(dpX, dpY)) {
-                    Log.d("", "Button Pushed");
+                    mainRenderer.changeGameState(new MainGameState(mainRenderer));
                 }
         }
     }

@@ -65,7 +65,7 @@ public class SolidRenderType implements RenderType {
     }
 
     @Override
-    public void drawLine(Line line) {
+    public void drawAlphaShape(AlphaShape alphaShape) {
         GLES20.glUseProgram(Shaders.solidLineProgram);
 
         int positionHandle = GLES20.glGetAttribLocation(Shaders.solidLineProgram, "vPosition");
@@ -82,7 +82,7 @@ public class SolidRenderType implements RenderType {
 
         int alphaHandle = GLES20.glGetAttribLocation(Shaders.solidLineProgram, "aAlpha");
 
-        line.draw(positionHandle, alphaHandle);
+        alphaShape.draw(positionHandle, alphaHandle);
     }
 
     @Override

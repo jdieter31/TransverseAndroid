@@ -9,7 +9,7 @@ import java.nio.FloatBuffer;
 /**
  * Created by Justin on 8/18/2014.
  */
-public class Line {
+public class Line implements AlphaShape {
     private float x;
     private float y;
     private float z;
@@ -32,6 +32,22 @@ public class Line {
     public void setEndPoint(float x, float y) {
         this.endX = x;
         this.endY = y;
+    }
+
+    public float getStartPointX() {
+        return x;
+    }
+
+    public float getStartPointY() {
+        return y;
+    }
+
+    public float getEndPointX() {
+        return endX;
+    }
+
+    public float getEndPointY() {
+        return endY;
     }
 
     public void setWidth(float width) {
