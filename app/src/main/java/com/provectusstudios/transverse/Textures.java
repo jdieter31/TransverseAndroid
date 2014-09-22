@@ -12,15 +12,15 @@ import android.opengl.GLUtils;
 public class Textures {
 
     public static int arialFontTexture;
+    public static int fffForwardFontTexture;
     public static int trophyTexture;
     public static int leaderboardTexture;
-    public static int orbitronFontTexture;
 
     public static void loadTextures(Context context) {
         arialFontTexture = loadTextureFromResource(R.drawable.arial, context);
+        fffForwardFontTexture = loadTextureFromResource(R.drawable.forward, context);
         trophyTexture = loadTextureFromResource(R.drawable.trophy, context);
         leaderboardTexture = loadTextureFromResource(R.drawable.leaderboard, context);
-        orbitronFontTexture = loadTextureFromResource(R.drawable.orbitron, context);
     }
 
     private static int loadTextureFromBitmap(Bitmap bitmap) {

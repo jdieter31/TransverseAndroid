@@ -53,7 +53,7 @@ public class MainRenderer implements GLSurfaceView.Renderer {
         Textures.loadTextures(context);
 
         Text.loadFont(context.getResources().getXml(R.xml.arial), Textures.arialFontTexture, "Arial");
-        Text.loadFont(context.getResources().getXml(R.xml.orbitron), Textures.orbitronFontTexture, "Orbitron");
+        Text.loadFont(context.getResources().getXml(R.xml.forward), Textures.fffForwardFontTexture, "FFF Forward");
 
         GLES20.glEnable(GLES20.GL_DITHER);
         GLES20.glEnable(GLES20.GL_BLEND);
@@ -106,7 +106,7 @@ public class MainRenderer implements GLSurfaceView.Renderer {
             fps += 1;
             if (System.currentTimeMillis() - lastFpsCalc > 1000) {
                 lastFpsCalc = System.currentTimeMillis();
-                Log.d("Complexus", "FPS: " + fps);
+                Log.d("Transverse", "FPS: " + fps);
                 fps = 0;
             }
         }

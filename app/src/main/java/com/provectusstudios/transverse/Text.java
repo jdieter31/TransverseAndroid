@@ -1,5 +1,7 @@
 package com.provectusstudios.transverse;
 
+import android.util.Log;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -42,6 +44,10 @@ public class Text {
 
     public float getWidth() {
         return font.widthOfString(text, textSize);
+    }
+
+    public float getHeight() {
+        return font.heightOfString(text, textSize);
     }
 
     public void setTextSize(float textSize) {
@@ -180,7 +186,11 @@ public class Text {
                 char character = charArray[i];
                 int indexOfChar = indexOfChar(character);
                 if (indexOfChar != -1) {
-                    nonScaledWidth += charXAdvance[indexOfChar];
+                    if (i != charArray.length - 1) {
+                        nonScaledWidth += charXAdvance[indexOfChar];
+                    } else {
+                        nonScaledWidth += charWidths[indexOfChar];
+                    }
                     if (i != 0) {
                         int kerning = kerningForChars(prevChar, character);
                         nonScaledWidth += kerning;
@@ -189,6 +199,20 @@ public class Text {
                 prevChar = character;
             }
             return ((float) nonScaledWidth) * fontSize / ((float) baseFontSize);
+        }
+
+        public float heightOfString(String string, float fontSize) {
+            char[] charArray = string.toCharArray();
+            int nonScaledHeight = 0;
+            for (int i = 0; i < charArray.length; i++) {
+                char character = charArray[i];
+                int indexOfChar = indexOfChar(character);
+                if (charHeights[indexOfChar] > nonScaledHeight) {
+                    nonScaledHeight = charHeights[indexOfChar];
+                }
+            }
+            Log.d("", "" + ((float) nonScaledHeight) * fontSize / ((float) baseFontSize));
+            return ((float) nonScaledHeight) * fontSize / ((float) baseFontSize);
         }
 
         public void calculateDataForString(String string, float fontSize, float originX, float originY, float originZ) {

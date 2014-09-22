@@ -58,6 +58,12 @@ public class MainGameState implements GameState {
     private ConcurrentLinkedQueue<Path.Point> leftPointsToAdd = new ConcurrentLinkedQueue<Path.Point>();
     private ConcurrentLinkedQueue<Path.Point> rightPointsToAdd = new ConcurrentLinkedQueue<Path.Point>();
 
+    private Rectangle backgroundRectangle;
+    private RoundedRectangle scoreRectangle;
+    private Text scoreText;
+
+    private RenderType backgroundRenderType;
+    private RenderType scoreRectangleRenderType;
 
     public MainGameState(MainRenderer mainRenderer) {
         this.mainRenderer = mainRenderer;
@@ -80,6 +86,10 @@ public class MainGameState implements GameState {
         Matrix.setIdentityM(verticalTranslate, 0);
         leftPath.setWidth(5f);
         rightPath.setWidth(5f);
+        backgroundRenderType = new SolidRenderType();
+        ((SolidRenderType) backgroundRenderType).setColor(.95f, .95f, .95f);
+        scoreRectangleRenderType = new SolidRenderType();
+        ((SolidRenderType) scoreRectangleRenderType).setColor(1f,1f,1f);
     }
 
     @Override
@@ -229,6 +239,16 @@ public class MainGameState implements GameState {
 
     @Override
     public void onDrawFrame() {
+        backgroundRenderType.setMatrix(viewProjectionMatrix);
+        backgroundRenderType.setAlpha(1);
+        backgroundRenderType.drawShape(backgroundRectangle);
+        scoreRectangleRenderType.setMatrix(viewProjectionMatrix);
+        scoreRectangleRenderType.setAlpha(1);
+        scoreRectangleRenderType.drawShape(scoreRectangle);
+        scoreText.setText("" + (System.currentTimeMillis() % 11000)/1000);
+        scoreText.setOrigin(width/2 - scoreText.getWidth()/2, height/2 - height/4, 0);
+        scoreText.refresh();
+        backgroundRenderType.drawText(scoreText);
         if (!started) {
             greyRenderType.setMatrix(viewProjectionMatrix);
             leftRenderType.setMatrix(viewProjectionMatrix);
@@ -270,5 +290,23 @@ public class MainGameState implements GameState {
         this.viewProjectionMatrix = viewProjectionMatrix;
         this.height = height;
         this.width = width;
+        backgroundRectangle = new Rectangle();
+        backgroundRectangle.setWidth(width);
+        backgroundRectangle.setHeight(height);
+        backgroundRectangle.setOrigin(0, 0, 0);
+        backgroundRectangle.refresh();
+        scoreRectangle = new RoundedRectangle();
+        scoreRectangle.setWidth(width/2);
+        scoreRectangle.setHeight(height / 2);
+        scoreRectangle.setCenter(width / 2, height / 2, 0);
+        scoreRectangle.setCornerRadius(20);
+        scoreRectangle.setPrecision(40);
+        scoreRectangle.refresh();
+        scoreText = new Text();
+        scoreText.setFont("FFF Forward");
+        scoreText.setTextSize(height/2);
+        scoreText.setText("10");
+        scoreText.setOrigin(width/2 - scoreText.getWidth()/2, height/2 - height/4, 0);
+        scoreText.refresh();
     }
 }
