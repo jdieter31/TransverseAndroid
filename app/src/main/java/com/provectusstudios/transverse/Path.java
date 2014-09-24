@@ -130,6 +130,20 @@ public class Path implements AlphaShape {
         for (int i = 0; i < numOfPoints; i++) {
             points.remove(0);
         }
+        if (points.size() == 0) {
+            vertices = new float[0];
+            verticeBuffer = ByteBuffer.allocateDirect(0)
+                    .order(ByteOrder.nativeOrder()).asFloatBuffer();
+            alpha = new float[0];
+            alphaBuffer = ByteBuffer.allocateDirect(0)
+                    .order(ByteOrder.nativeOrder()).asFloatBuffer();
+            drawOrder = new short[0];
+            drawOrderBuffer = ByteBuffer.allocateDirect(0)
+                    .order(ByteOrder.nativeOrder()).asShortBuffer();
+            corners = new Corner[0];
+            drawOrderLength = 0;
+            return;
+        }
         float[] newVertices = new float[24*(points.size() - 1)];
         for (int i = 24*numOfPoints; i < vertices.length; i++) {
             newVertices[i - 24*numOfPoints] = vertices[i];

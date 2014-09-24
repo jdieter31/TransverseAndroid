@@ -8,6 +8,7 @@ import android.view.MotionEvent;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -25,8 +26,12 @@ public class MainGameState implements GameState {
 
     private float lastLeftX;
     private float lastLeftY;
+    private float lastLeftVerticalChange;
     private float lastRightX;
     private float lastRightY;
+    private float lastRightVerticalChange;
+
+    private int score = 0;
 
     private boolean leftDown;
     private boolean rightDown;
@@ -48,7 +53,7 @@ public class MainGameState implements GameState {
     private boolean started;
 
     private long lastMoveCalc;
-    private float speed = 100;
+    private float speed = 200;
 
     private long lastTouchCalculationLeft = -1;
     private long lastTouchCalculationRight = -1;
@@ -58,12 +63,33 @@ public class MainGameState implements GameState {
     private ConcurrentLinkedQueue<Path.Point> leftPointsToAdd = new ConcurrentLinkedQueue<Path.Point>();
     private ConcurrentLinkedQueue<Path.Point> rightPointsToAdd = new ConcurrentLinkedQueue<Path.Point>();
 
+    private class LineSegment {
+        public float startX;
+        public float startY;
+        public float endX;
+        public float endY;
+    }
+
+    private ConcurrentLinkedQueue<LineSegment> leftTouchChanges = new ConcurrentLinkedQueue<LineSegment>();
+    private ConcurrentLinkedQueue<LineSegment> rightTouchChanges = new ConcurrentLinkedQueue<LineSegment>();
+
     private Rectangle backgroundRectangle;
     private RoundedRectangle scoreRectangle;
     private Text scoreText;
 
     private RenderType backgroundRenderType;
     private RenderType scoreRectangleRenderType;
+
+    private Random random = new Random();
+
+    private List<Gate> leftGates = new ArrayList<Gate>();
+    private List<Gate> rightGates = new ArrayList<Gate>();
+
+    private long nextAddLeftGate;
+    private long nextAddRightGate;
+
+    private long lastAddLeftGate = -1;
+    private long lastAddRightGate = -1;
 
     public MainGameState(MainRenderer mainRenderer) {
         this.mainRenderer = mainRenderer;
@@ -156,6 +182,13 @@ public class MainGameState implements GameState {
                             point.x = dpX;
                             point.y = dpY + verticalChange;
                             leftPointsToAdd.add(point);
+                            LineSegment touchChange = new LineSegment();
+                            touchChange.startX = lastLeftX;
+                            touchChange.startY = lastLeftY + lastLeftVerticalChange;
+                            touchChange.endX = dpX;
+                            touchChange.endY = dpY + verticalChange;
+                            leftTouchChanges.add(touchChange);
+                            lastLeftVerticalChange = verticalChange;
                             lastLeftX = dpX;
                             lastLeftY = dpY;
                             lastTouchCalculationLeft = System.currentTimeMillis();
@@ -164,6 +197,13 @@ public class MainGameState implements GameState {
                             point.x = dpX;
                             point.y = dpY + verticalChange;
                             rightPointsToAdd.add(point);
+                            LineSegment touchChange = new LineSegment();
+                            touchChange.startX = lastRightX;
+                            touchChange.startY = lastRightY + lastRightVerticalChange;
+                            touchChange.endX = dpX;
+                            touchChange.endY = dpY + verticalChange;
+                            rightTouchChanges.add(touchChange);
+                            lastRightVerticalChange = verticalChange;
                             lastRightX = dpX;
                             lastRightY = dpY;
                             lastTouchCalculationRight = System.currentTimeMillis();
@@ -171,6 +211,32 @@ public class MainGameState implements GameState {
                     }
                 }
                 break;
+        }
+    }
+
+    private void refreshScore() {
+        scoreText.setText("" + score);
+        scoreText.setOrigin(width/2 - scoreText.getWidth()/2, height/2 - height/4, 0);
+        scoreText.refresh();
+    }
+
+    private void handleGatesTouch(float endX, float endY, float startX, float startY, List<Gate> gates) {
+        for (Gate gate : gates) {
+            if (!gate.isPassed() && gate.lineCrosses(startX, startY, endX, endY)) {
+                score++;
+                refreshScore();
+                gate.setPassed(true);
+            }
+        }
+    }
+
+    private void checkGatesTouch() {
+        LineSegment touchChange;
+        while ((touchChange = leftTouchChanges.poll()) != null) {
+            handleGatesTouch(touchChange.endX, touchChange.endY, touchChange.startX, touchChange.startY, leftGates);
+        }
+        while ((touchChange = rightTouchChanges.poll()) != null) {
+            handleGatesTouch(touchChange.endX, touchChange.endY, touchChange.startX, touchChange.startY, rightGates);
         }
     }
 
@@ -215,6 +281,13 @@ public class MainGameState implements GameState {
             newLeftPoint.x = lastLeftX;
             newLeftPoint.y = lastLeftY + verticalChange;
             leftPointsToAdd.add(newLeftPoint);
+            LineSegment pathChange = new LineSegment();
+            pathChange.startX = lastLeftX;
+            pathChange.endX = lastLeftX;
+            pathChange.startY = lastLeftY + lastLeftVerticalChange;
+            pathChange.endY = lastLeftY + verticalChange;
+            leftTouchChanges.add(pathChange);
+            lastLeftVerticalChange = verticalChange;
             lastTouchCalculationLeft = time;
         }
         if (lastTouchCalculationRight != -1 && ((float) (time - lastTouchCalculationRight))*speed/1000f > 7) {
@@ -222,7 +295,28 @@ public class MainGameState implements GameState {
             newRightPoint.x = lastRightX;
             newRightPoint.y = lastRightY + verticalChange;
             rightPointsToAdd.add(newRightPoint);
+            LineSegment pathChange = new LineSegment();
+            pathChange.startX = lastRightX;
+            pathChange.endX = lastRightX;
+            pathChange.startY = lastRightY + lastRightVerticalChange;
+            pathChange.endY = lastRightY + verticalChange;
+            rightTouchChanges.add(pathChange);
+            lastRightVerticalChange = verticalChange;
             lastTouchCalculationRight = time;
+        }
+        Iterator<Gate> leftGateIterator = leftGates.iterator();
+        while (leftGateIterator.hasNext()) {
+            Gate gate = leftGateIterator.next();
+            if (gate.getCenterY() - gate.getWidth()/2 - 5 > (height + verticalChange)) {
+                leftGateIterator.remove();
+            }
+        }
+        Iterator<Gate> rightGateIterator = rightGates.iterator();
+        while (rightGateIterator.hasNext()) {
+            Gate gate = rightGateIterator.next();
+            if (gate.getCenterY() - gate.getWidth()/2 - 5 > (height + verticalChange)) {
+                rightGateIterator.remove();
+            }
         }
         lastMoveCalc = time;
     }
@@ -237,6 +331,54 @@ public class MainGameState implements GameState {
         }
     }
 
+    public void addNewGates() {
+        long time = System.currentTimeMillis();
+        long leftGateDT = time - lastAddLeftGate;
+        boolean sane = true;
+        if (lastAddLeftGate == -1 || leftGateDT < 0) {
+            lastAddLeftGate = time;
+            nextAddLeftGate = (long) (random.nextFloat() * 3000 + 2000);
+            sane = false;
+        }
+        long rightGateDT = time - lastAddRightGate;
+        if (lastAddRightGate == -1 || rightGateDT < 0) {
+            lastAddRightGate = time;
+            nextAddRightGate = (long) (random.nextFloat() * 3000 + 2000);
+            sane = false;
+        }
+        if (!sane) {
+            return;
+        }
+        if (leftGateDT >= nextAddLeftGate) {
+            lastAddLeftGate = time;
+            nextAddLeftGate = (long) (random.nextFloat() * 3000 + 2000);
+            Gate gate = randomGate();
+            gate.setRenderType(leftRenderType);
+            gate.refresh();
+            leftGates.add(gate);
+        }
+        if (rightGateDT >= nextAddRightGate) {
+            lastAddRightGate = time;
+            nextAddRightGate = (long) (random.nextFloat() * 3000 + 2000);
+            Gate gate = randomGate();
+            gate.setRenderType(rightRenderType);
+            gate.refresh();
+            rightGates.add(gate);
+        }
+    }
+
+    private Gate randomGate() {
+        Gate gate = new Gate();
+        float angle = (float) (random.nextFloat()*Math.PI);
+        gate.setAngle(angle);
+        float gateWidth = random.nextFloat()*(width/3) + (width/8);
+        gate.setWidth(gateWidth);
+        float gateX = random.nextFloat()*(height - 10 - gateWidth) + gateWidth/2 + 5;
+        float gateY = verticalChange - gateWidth/2 - 5;
+        gate.setCenter(gateX, gateY);
+        return gate;
+    }
+
     @Override
     public void onDrawFrame() {
         backgroundRenderType.setMatrix(viewProjectionMatrix);
@@ -245,9 +387,6 @@ public class MainGameState implements GameState {
         scoreRectangleRenderType.setMatrix(viewProjectionMatrix);
         scoreRectangleRenderType.setAlpha(1);
         scoreRectangleRenderType.drawShape(scoreRectangle);
-        scoreText.setText("" + (System.currentTimeMillis() % 11000)/1000);
-        scoreText.setOrigin(width/2 - scoreText.getWidth()/2, height/2 - height/4, 0);
-        scoreText.refresh();
         backgroundRenderType.drawText(scoreText);
         if (!started) {
             greyRenderType.setMatrix(viewProjectionMatrix);
@@ -266,6 +405,8 @@ public class MainGameState implements GameState {
         } else {
             addNewPoints();
             calculateMove();
+            checkGatesTouch();
+            addNewGates();
             float[] verticalTranslateMVP = new float[16];
             Matrix.multiplyMM(verticalTranslateMVP, 0, viewProjectionMatrix, 0, verticalTranslate, 0);
             leftRenderType.setMatrix(verticalTranslateMVP);
@@ -276,6 +417,12 @@ public class MainGameState implements GameState {
             }
             leftRenderType.drawAlphaShape(leftPath);
             rightRenderType.drawAlphaShape(rightPath);
+            for (Gate gate : leftGates) {
+                gate.draw();
+            }
+            for (Gate gate : rightGates) {
+                gate.draw();
+            }
         }
     }
 
@@ -305,8 +452,6 @@ public class MainGameState implements GameState {
         scoreText = new Text();
         scoreText.setFont("FFF Forward");
         scoreText.setTextSize(height/2);
-        scoreText.setText("10");
-        scoreText.setOrigin(width/2 - scoreText.getWidth()/2, height/2 - height/4, 0);
-        scoreText.refresh();
+        refreshScore();
     }
 }
