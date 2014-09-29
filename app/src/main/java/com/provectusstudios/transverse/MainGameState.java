@@ -91,6 +91,8 @@ public class MainGameState implements GameState {
     private long lastAddLeftGate = -1;
     private long lastAddRightGate = -1;
 
+    private long lastSpeedCalculation = -1;
+
     public MainGameState(MainRenderer mainRenderer) {
         this.mainRenderer = mainRenderer;
         leftCircle = new Circle();
@@ -379,6 +381,17 @@ public class MainGameState implements GameState {
         return gate;
     }
 
+    private void adjustSpeed() {
+        long time = System.currentTimeMillis();
+        long dt = time - lastSpeedCalculation;
+        if (lastSpeedCalculation == -1 || dt < 0) {
+            lastSpeedCalculation = time;
+            return;
+        }
+        speed += ((float) dt)*(1f/100f);
+        lastSpeedCalculation = time;
+    }
+
     @Override
     public void onDrawFrame() {
         backgroundRenderType.setMatrix(viewProjectionMatrix);
@@ -407,6 +420,7 @@ public class MainGameState implements GameState {
             calculateMove();
             checkGatesTouch();
             addNewGates();
+            adjustSpeed();
             float[] verticalTranslateMVP = new float[16];
             Matrix.multiplyMM(verticalTranslateMVP, 0, viewProjectionMatrix, 0, verticalTranslate, 0);
             leftRenderType.setMatrix(verticalTranslateMVP);
