@@ -31,107 +31,6 @@ public class Path implements AlphaShape {
     private ShortBuffer drawOrderBuffer;
     private int drawOrderLength;
 
-    private class Corner {
-        private float[] outlineVertices;
-        private float[] outlineAlpha;
-        private float[] centerVertices;
-        private float[] centerAlpha;
-        private FloatBuffer outlineVerticeBuffer;
-        private FloatBuffer outlineAlphaBuffer;
-        private FloatBuffer centerVerticeBuffer;
-        private FloatBuffer centerAlphaBuffer;
-        private final int precision = 5;
-
-        public Corner(float centerX, float centerY, float width) {
-            float innerCircleRadius = width/4;
-            centerVertices = new float[precision * 3 + 6];
-            centerVertices[0] = centerX;
-            centerVertices[1] = centerY;
-            centerVertices[2] = 0;
-            centerAlpha = new float[precision + 2];
-            centerAlpha[0] = 1;
-            for (int i = 0; i <= precision; i++) {
-                centerVertices[(i + 1) * 3] = (float) (innerCircleRadius * Math.cos(((float) i) / precision * Math.PI * 2) + centerX);
-                centerVertices[(i + 1) * 3 + 1] = (float) (innerCircleRadius * Math.sin(((float) i) / precision * Math.PI * 2) + centerY);
-                centerVertices[(i + 1) * 3 + 2] = 0;
-                centerAlpha[i + 1] = 1;
-            }
-            centerVerticeBuffer = ByteBuffer.allocateDirect(centerVertices.length * 4)
-                    .order(ByteOrder.nativeOrder()).asFloatBuffer();
-            centerVerticeBuffer.put(centerVertices).position(0);
-            centerAlphaBuffer = ByteBuffer.allocateDirect(centerAlpha.length * 4)
-                    .order(ByteOrder.nativeOrder()).asFloatBuffer();
-            centerAlphaBuffer.put(centerAlpha).position(0);
-
-            outlineVertices = new float[precision * 3 * 2 + 6];
-            outlineAlpha = new float[precision*2 + 2];
-            for (int i = 0; i <= precision; i++)  {
-                outlineVertices[i * 3 * 2] = (float) ((innerCircleRadius) * Math.cos(((float) i) / precision * 2 * Math.PI) + centerX);
-                outlineVertices[i * 3 * 2 + 1] = (float) ((innerCircleRadius) * Math.sin(((float) i) / precision * 2 * Math.PI) + centerY);
-                outlineVertices[i * 3 * 2 + 2] = 0;
-                outlineAlpha[i*2] = 1;
-                outlineVertices[i * 3 * 2 + 3] = (float) ((width/2) * Math.cos(((float) i) / precision * 2 * Math.PI) + centerX);
-                outlineVertices[i * 3 * 2 + 4] = (float) ((width/2) * Math.sin(((float) i) / precision * 2 * Math.PI) + centerY);
-                outlineVertices[i * 3 * 2 + 5] = 0;
-                outlineAlpha[i*2 + 1] = 0;
-            }
-            outlineVerticeBuffer = ByteBuffer.allocateDirect(outlineVertices.length * 4)
-                    .order(ByteOrder.nativeOrder()).asFloatBuffer();
-            outlineVerticeBuffer.put(outlineVertices).position(0);
-            outlineAlphaBuffer = ByteBuffer.allocateDirect(outlineAlpha.length * 4)
-                    .order(ByteOrder.nativeOrder()).asFloatBuffer();
-            outlineAlphaBuffer.put(outlineAlpha).position(0);
-        }
-
-
-        public void draw(int verticeMatrixHandle, int alphaHandle) {
-            GLES20.glVertexAttribPointer(verticeMatrixHandle, 3, GLES20.GL_FLOAT, false,
-                    0, centerVerticeBuffer);
-
-            GLES20.glEnableVertexAttribArray(verticeMatrixHandle);
-
-            GLES20.glVertexAttribPointer(alphaHandle, 1, GLES20.GL_FLOAT, false,
-                    0, centerAlphaBuffer);
-
-            GLES20.glEnableVertexAttribArray(alphaHandle);
-
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, precision + 2);
-
-
-            GLES20.glVertexAttribPointer(verticeMatrixHandle, 3, GLES20.GL_FLOAT, false,
-                    0, outlineVerticeBuffer);
-
-            GLES20.glEnableVertexAttribArray(verticeMatrixHandle);
-
-            GLES20.glVertexAttribPointer(alphaHandle, 1, GLES20.GL_FLOAT, false,
-                    0, outlineAlphaBuffer);
-
-            GLES20.glEnableVertexAttribArray(alphaHandle);
-
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, precision*2 + 2);
-        }
-
-        public void setAlpha(float alpha) {
-            centerAlpha = new float[precision + 2];
-            for (int i = 0; i < centerAlpha.length; i++) {
-                centerAlpha[i] = alpha;
-            }
-            centerAlphaBuffer = ByteBuffer.allocateDirect(centerAlpha.length * 4)
-                    .order(ByteOrder.nativeOrder()).asFloatBuffer();
-            centerAlphaBuffer.put(centerAlpha).position(0);
-            outlineAlpha = new float[precision*2 + 2];
-            for (int i = 0; i <= precision; i++)  {
-                outlineAlpha[i*2] = alpha;
-                outlineAlpha[i*2 + 1] = 0;
-            }
-            outlineAlphaBuffer = ByteBuffer.allocateDirect(outlineAlpha.length * 4)
-                    .order(ByteOrder.nativeOrder()).asFloatBuffer();
-            outlineAlphaBuffer.put(outlineAlpha).position(0);
-        }
-    }
-
-    private Corner[] corners;
-
     public void setWidth(float width) {
         this.width = width;
     }
@@ -158,7 +57,6 @@ public class Path implements AlphaShape {
             drawOrder = new short[0];
             drawOrderBuffer = ByteBuffer.allocateDirect(0)
                     .order(ByteOrder.nativeOrder()).asShortBuffer();
-            corners = new Corner[0];
             drawOrderLength = 0;
             return;
         }
@@ -190,16 +88,6 @@ public class Path implements AlphaShape {
         alphaBuffer = ByteBuffer.allocateDirect(alpha.length * 4)
                 .order(ByteOrder.nativeOrder()).asFloatBuffer();
         alphaBuffer.put(alpha).position(0);
-
-        if (points.size() > 2) {
-            Corner[] newCorners = new Corner[points.size() - 2];
-            for (int i = numOfPoints; i < corners.length; i++) {
-                newCorners[i - numOfPoints] = corners[i];
-            }
-            corners = newCorners;
-        } else {
-            corners = new Corner[0];
-        }
     }
 
     public void addTopPoint(Point point) {
@@ -219,15 +107,7 @@ public class Path implements AlphaShape {
             newAlpha[i] = alpha[i];
         }
         alpha = newAlpha;
-        if (points.size() > 2) {
-            Corner[] newCorners = new Corner[points.size() - 2];
-            for (int i = 0; i < corners.length; i++) {
-                newCorners[i] = corners[i];
-            }
-            corners = newCorners;
-        } else {
-            corners = new Corner[0];
-        }
+
         if (points.size() > 1) {
             insertSegment(points.size()-2);
         }
@@ -264,9 +144,6 @@ public class Path implements AlphaShape {
         alphaBuffer.put(pointIndex*8 + 3, alphaValue);
         alphaBuffer.put(pointIndex*8 + 4, prevAlpha);
         alphaBuffer.put(pointIndex*8 + 5, alphaValue);
-        if (pointIndex != 0 && corners[pointIndex - 1] != null) {
-            corners[pointIndex - 1] = null;
-        }
     }
 
     private void insertSegment(int index) {
@@ -306,59 +183,50 @@ public class Path implements AlphaShape {
         float y = point.y;
         float endX =  nextPoint.x;
         float endY = nextPoint.y;
-        float widthX;
-        float widthY;
-        if ((endY - y) == 0) {
-            widthY = 0;
-            widthX = width/2;
+        float magnitude = (float) Math.sqrt(Math.pow(endX - x, 2) + Math.pow(endY - y, 2));
+        float directionX = (endX - x)/magnitude;
+        float directionY = (endY - y)/magnitude;
+        float perpendicularX = -directionY;
+        float perpendicularY = directionX;
+        if (index != 0) {
+            vertices[index*24] = vertices[(index-1)*24 + 3];
+            vertices[index*24 + 1] = vertices[(index - 1)*24 + 4];
+            vertices[index*24 + 2] = 0;
+            vertices[index*24 + 6] = vertices[(index-1)*24 + 9];
+            vertices[index*24 + 7] = vertices[(index - 1)*24 + 10];
+            vertices[index*24 + 8] = 0;
+            vertices[index*24 + 12] = vertices[(index-1)*24 + 15];
+            vertices[index*24 + 13] = vertices[(index - 1)*24 + 16];
+            vertices[index*24 + 14] = 0;
+            vertices[index*24 + 18] = vertices[(index-1)*24 + 21];
+            vertices[index*24 + 19] = vertices[(index - 1)*24 + 22];
+            vertices[index*24 + 20] = 0;
         } else {
-            float slope = -1f / ((endY - y) / (endX - x));
-            widthX = (float) Math.sqrt(Math.pow(width / 2, 2) / (1 + Math.pow(slope, 2)));
-            widthY = widthX * slope;
+            vertices[index*24] = x - perpendicularX*width/2;
+            vertices[index*24 + 1] = y - perpendicularY*width/2;
+            vertices[index*24 + 2] = 0;
+            vertices[index*24 + 6] = x - perpendicularX*width/4;
+            vertices[index*24 + 7] = y - perpendicularY*width/4;
+            vertices[index*24 + 8] = 0;
+            vertices[index*24 + 12] = x + perpendicularX*width/4;
+            vertices[index*24 + 13] = y + perpendicularY*width/4;
+            vertices[index*24 + 14] = 0;
+            vertices[index*24 + 18] = x + perpendicularX*width/2;
+            vertices[index*24 + 19] = y + perpendicularY*width/2;
+            vertices[index*24 + 20] = 0;
         }
-        vertices[index*24] = x - widthX;
-        vertices[index*24 + 1] = y - widthY;
-        vertices[index*24 + 2] = 0;
-        vertices[index*24 + 3] = endX - widthX;
-        vertices[index*24 + 4] = endY - widthY;
+        vertices[index*24 + 3] = endX - perpendicularX*width/2;
+        vertices[index*24 + 4] = endY - perpendicularY*width/2;
         vertices[index*24 + 5] = 0;
-        vertices[index*24 + 6] = x - widthX/2;
-        vertices[index*24 + 7] = y - widthY/2;
-        vertices[index*24 + 8] = 0;
-        vertices[index*24 + 9] = endX - widthX/2;
-        vertices[index*24 + 10] = endY - widthY/2;
+        vertices[index*24 + 9] = endX - perpendicularX*width/4;
+        vertices[index*24 + 10] = endY - perpendicularY*width/4;
         vertices[index*24 + 11] = 0;
-        vertices[index*24 + 12] = x + widthX/2;
-        vertices[index*24 + 13] = y + widthY/2;
-        vertices[index*24 + 14] = 0;
-        vertices[index*24 + 15] = endX + widthX/2;
-        vertices[index*24 + 16] = endY + widthY/2;
+        vertices[index*24 + 15] = endX + perpendicularX*width/4;
+        vertices[index*24 + 16] = endY + perpendicularY*width/4;
         vertices[index*24 + 17] = 0;
-        vertices[index*24 + 18] = x + widthX;
-        vertices[index*24 + 19] = y + widthY;
-        vertices[index*24 + 20] = 0;
-        vertices[index*24 + 21] = endX + widthX;
-        vertices[index*24 + 22] = endY + widthY;
+        vertices[index*24 + 21] = endX + perpendicularX*width/2;
+        vertices[index*24 + 22] = endY + perpendicularY*width/2;
         vertices[index*24 + 23] = 0;
-
-        if (index != 0 && points.size() > 2) {
-            Point lastPoint = points.get(index-1);
-            boolean sameSlope = false;
-            float lastSlope = (y - lastPoint.y)/(x - lastPoint.x);
-            float slope = (endY - y)/(endX - x);
-            if (lastSlope == 0 && slope == 0) {
-                if (x - lastPoint.x == 0 && endX - x == 0) {
-                    sameSlope = true;
-                } else if (x - lastPoint.x != 0 && endX - x != 0) {
-                    sameSlope = true;
-                }
-            } else if (slope == lastSlope) {
-                sameSlope = true;
-            }
-            if (!sameSlope) {
-                corners[index - 1] = new Corner(x, y, width);
-            }
-        }
     }
 
     public List<Point> getPoints() {
@@ -369,11 +237,6 @@ public class Path implements AlphaShape {
         drawOrder = new short[18*(points.size()-1)];
         vertices = new float[24*(points.size()-1)];
         alpha = new float[8*(points.size() - 1)];
-        if (points.size() > 2) {
-            corners = new Corner[points.size() - 2];
-        } else {
-            corners = new Corner[0];
-        }
         for (int i = 0; i < points.size() - 1; i++) {
             insertSegment(i);
         }
@@ -405,12 +268,6 @@ public class Path implements AlphaShape {
 
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, drawOrderLength,
                 GLES20.GL_UNSIGNED_SHORT, drawOrderBuffer);
-
-        for (Corner corner : corners) {
-            if (corner != null) {
-                corner.draw(verticeMatrixHandle, alphaHandle);
-            }
-        }
     }
 }
 
