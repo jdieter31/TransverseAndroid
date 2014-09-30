@@ -110,6 +110,24 @@ public class Path implements AlphaShape {
 
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, precision*2 + 2);
         }
+
+        public void setAlpha(float alpha) {
+            centerAlpha = new float[precision + 2];
+            for (int i = 0; i < centerAlpha.length; i++) {
+                centerAlpha[i] = alpha;
+            }
+            centerAlphaBuffer = ByteBuffer.allocateDirect(centerAlpha.length * 4)
+                    .order(ByteOrder.nativeOrder()).asFloatBuffer();
+            centerAlphaBuffer.put(centerAlpha).position(0);
+            outlineAlpha = new float[precision*2 + 2];
+            for (int i = 0; i <= precision; i++)  {
+                outlineAlpha[i*2] = alpha;
+                outlineAlpha[i*2 + 1] = 0;
+            }
+            outlineAlphaBuffer = ByteBuffer.allocateDirect(outlineAlpha.length * 4)
+                    .order(ByteOrder.nativeOrder()).asFloatBuffer();
+            outlineAlphaBuffer.put(outlineAlpha).position(0);
+        }
     }
 
     private Corner[] corners;
@@ -227,6 +245,28 @@ public class Path implements AlphaShape {
         drawOrderBuffer.put(drawOrder).position(0);
         drawOrderLength = drawOrder.length;
 
+    }
+
+    public void setAlpha(int pointIndex, float alphaValue) {
+        float prevAlpha = 0;
+        if (pointIndex != 0) {
+            prevAlpha = alpha[(pointIndex - 1)*8 + 3];
+        }
+        alpha[pointIndex*8] = 0;
+        alpha[pointIndex*8 + 1] = 0;
+        alpha[pointIndex*8 + 2] = prevAlpha;
+        alpha[pointIndex*8 + 3] = alphaValue;
+        alpha[pointIndex*8 + 4] = prevAlpha;
+        alpha[pointIndex*8 + 5] = alphaValue;
+        alpha[pointIndex*8 + 6] = 0;
+        alpha[pointIndex*8 + 7] = 0;
+        alphaBuffer.put(pointIndex*8 + 2, prevAlpha);
+        alphaBuffer.put(pointIndex*8 + 3, alphaValue);
+        alphaBuffer.put(pointIndex*8 + 4, prevAlpha);
+        alphaBuffer.put(pointIndex*8 + 5, alphaValue);
+        if (pointIndex != 0 && corners[pointIndex - 1] != null) {
+            corners[pointIndex - 1] = null;
+        }
     }
 
     private void insertSegment(int index) {

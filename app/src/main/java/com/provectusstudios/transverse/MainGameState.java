@@ -182,7 +182,7 @@ public class MainGameState implements GameState {
                         if (pointerID == leftPointer && dpX != lastLeftX && dpY != lastLeftY) {
                             Path.Point point = new Path.Point();
                             point.x = dpX;
-                            point.y = dpY + verticalChange;
+                            point.y = dpY;
                             leftPointsToAdd.add(point);
                             LineSegment touchChange = new LineSegment();
                             touchChange.startX = lastLeftX;
@@ -197,7 +197,7 @@ public class MainGameState implements GameState {
                         } else if (pointerID == rightPointer && dpX != lastRightX && dpY != lastRightY) {
                             Path.Point point = new Path.Point();
                             point.x = dpX;
-                            point.y = dpY + verticalChange;
+                            point.y = dpY;
                             rightPointsToAdd.add(point);
                             LineSegment touchChange = new LineSegment();
                             touchChange.startX = lastRightX;
@@ -252,37 +252,7 @@ public class MainGameState implements GameState {
         float newVerticalChange = (((float) dt) / 1000f) * speed;
         verticalChange -= newVerticalChange;
         Matrix.translateM(verticalTranslate, 0, 0, newVerticalChange, 0);
-        List<Path.Point> leftPoints = leftPath.getPoints();
-        int numOfLeftPointsToRemove = 0;
-        for (int i = 0; i < leftPoints.size(); i++) {
-            Path.Point point = leftPoints.get(i);
-            if (point.y > (height + 20 + verticalChange)) {
-                numOfLeftPointsToRemove += 1;
-            } else {
-                break;
-            }
-        }
-        if (numOfLeftPointsToRemove != 0) {
-            leftPath.removeBottomPoints(numOfLeftPointsToRemove);
-        }
-        List<Path.Point> rightPoints = rightPath.getPoints();
-        int numOfRightPointsToRemove = 0;
-        for (int i = 0; i < rightPoints.size(); i++) {
-            Path.Point point = rightPoints.get(i);
-            if (point.y > (height + 20 + verticalChange)) {
-                numOfRightPointsToRemove += 1;
-            } else {
-                break;
-            }
-        }
-        if (numOfRightPointsToRemove != 0) {
-            rightPath.removeBottomPoints(numOfRightPointsToRemove);
-        }
-        if (lastTouchCalculationLeft != -1 && ((float) (time - lastTouchCalculationLeft))*speed/1000f > 7) {
-            Path.Point newLeftPoint = new Path.Point();
-            newLeftPoint.x = lastLeftX;
-            newLeftPoint.y = lastLeftY + verticalChange;
-            leftPointsToAdd.add(newLeftPoint);
+        if (lastTouchCalculationLeft != -1 && ((float) (time - lastTouchCalculationLeft))*speed/1000f > 5) {
             LineSegment pathChange = new LineSegment();
             pathChange.startX = lastLeftX;
             pathChange.endX = lastLeftX;
@@ -292,11 +262,7 @@ public class MainGameState implements GameState {
             lastLeftVerticalChange = verticalChange;
             lastTouchCalculationLeft = time;
         }
-        if (lastTouchCalculationRight != -1 && ((float) (time - lastTouchCalculationRight))*speed/1000f > 7) {
-            Path.Point newRightPoint = new Path.Point();
-            newRightPoint.x = lastRightX;
-            newRightPoint.y = lastRightY + verticalChange;
-            rightPointsToAdd.add(newRightPoint);
+        if (lastTouchCalculationRight != -1 && ((float) (time - lastTouchCalculationRight))*speed/1000f > 5) {
             LineSegment pathChange = new LineSegment();
             pathChange.startX = lastRightX;
             pathChange.endX = lastRightX;
@@ -304,7 +270,6 @@ public class MainGameState implements GameState {
             pathChange.endY = lastRightY + verticalChange;
             rightTouchChanges.add(pathChange);
             lastRightVerticalChange = verticalChange;
-            lastTouchCalculationRight = time;
         }
         Iterator<Gate> leftGateIterator = leftGates.iterator();
         while (leftGateIterator.hasNext()) {
@@ -328,9 +293,41 @@ public class MainGameState implements GameState {
         while ((newPoint = leftPointsToAdd.poll()) != null) {
             leftPath.addTopPoint(newPoint);
         }
+        int pointsToRemove = 0;
+        float totalDistance = 0;
+        Path.Point prevPoint = leftPath.getPoints().get(leftPath.points.size()-1);
+        for (int i = leftPath.points.size() - 2; i >= 0; i--) {
+            Path.Point point = leftPath.points.get(i);
+            totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
+            if (totalDistance >= 100) {
+                leftPath.setAlpha(i, (200f - totalDistance)/100f);
+            }
+            if (totalDistance >= 200) {
+                pointsToRemove = i + 1;
+                break;
+            }
+            prevPoint = point;
+        }
+        leftPath.removeBottomPoints(pointsToRemove);
         while ((newPoint = rightPointsToAdd.poll()) != null) {
             rightPath.addTopPoint(newPoint);
         }
+        pointsToRemove = 0;
+        totalDistance = 0;
+        prevPoint = rightPath.getPoints().get(rightPath.points.size()-1);
+        for (int i = rightPath.points.size() - 2; i >= 0; i--) {
+            Path.Point point = rightPath.points.get(i);
+            totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
+            if (totalDistance >= 100) {
+                rightPath.setAlpha(i, (200f - totalDistance)/100f);
+            }
+            if (totalDistance >= 200) {
+                pointsToRemove = i + 1;
+                break;
+            }
+            prevPoint = point;
+        }
+        rightPath.removeBottomPoints(pointsToRemove);
     }
 
     public void addNewGates() {
@@ -429,8 +426,12 @@ public class MainGameState implements GameState {
                 leftRenderType.drawShape(leftCircle);
                 rightRenderType.drawShape(rightCircle);
             }
+            leftRenderType.setMatrix(viewProjectionMatrix);
+            rightRenderType.setMatrix(viewProjectionMatrix);
             leftRenderType.drawAlphaShape(leftPath);
             rightRenderType.drawAlphaShape(rightPath);
+            leftRenderType.setMatrix(verticalTranslateMVP);
+            rightRenderType.setMatrix(verticalTranslateMVP);
             for (Gate gate : leftGates) {
                 gate.draw();
             }
