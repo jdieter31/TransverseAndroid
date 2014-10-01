@@ -68,8 +68,4 @@ public class MainMenuState implements GameState {
         solidRenderType.setMatrix(viewProjectionMatrix);
     }
 
-    public void createGraphics() {
-
-    }
-
 }

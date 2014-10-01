@@ -1,16 +1,17 @@
 package com.provectusstudios.transverse;
 
+import android.util.Log;
+
 /**
  * Created by Justin on 9/21/2014.
  */
 public class Gate {
+
     private float angle;
-    private float width;
+    private float length;
 
     private float centerX;
     private float centerY;
-
-    private RenderType renderType;
 
     private Circle leftEnd;
     private Circle rightEnd;
@@ -22,8 +23,8 @@ public class Gate {
         this.angle = angle;
     }
 
-    public void setWidth(float width) {
-        this.width = width;
+    public void setLength(float length) {
+        this.length = length;
     }
 
     public void setCenter(float x, float y) {
@@ -39,33 +40,37 @@ public class Gate {
         return centerY;
     }
 
-    public float getWidth() {
-        return width;
+    public float getLength() {
+        return length;
     }
 
-    public void setRenderType(RenderType renderType) {
-        this.renderType = renderType;
+    public float getHeight() {
+        return (float) Math.abs(length * Math.sin(angle));
+    }
+
+    public float getWidth() {
+        return (float) Math.abs(length * Math.cos(angle));
     }
 
     public void refresh() {
         gateLine = new Line();
-        gateLine.setStartPoint((float) (centerX - width/2 * Math.cos(-angle)), (float) (centerY - width/2 * Math.sin(-angle)), 0);
-        gateLine.setEndPoint((float) (centerX + width/2 * Math.cos(-angle)), (float) (centerY + width/2 * Math.sin(-angle)));
+        gateLine.setStartPoint((float) (centerX - length /2 * Math.cos(-angle)), (float) (centerY - length /2 * Math.sin(-angle)), 0);
+        gateLine.setEndPoint((float) (centerX + length /2 * Math.cos(-angle)), (float) (centerY + length /2 * Math.sin(-angle)));
         gateLine.setWidth(3f);
         gateLine.refresh();
         leftEnd = new Circle();
         leftEnd.setPrecision(90);
         leftEnd.setRadius(4f);
-        leftEnd.setCenter((float) (centerX - width/2 * Math.cos(-angle)), (float) (centerY - width/2 * Math.sin(-angle)), 0);
+        leftEnd.setCenter((float) (centerX - length /2 * Math.cos(-angle)), (float) (centerY - length /2 * Math.sin(-angle)), 0);
         leftEnd.refresh();
         rightEnd = new Circle();
         rightEnd.setPrecision(90);
         rightEnd.setRadius(4f);
-        rightEnd.setCenter((float) (centerX + width/2 * Math.cos(-angle)), (float) (centerY + width/2 * Math.sin(-angle)), 0);
+        rightEnd.setCenter((float) (centerX + length /2 * Math.cos(-angle)), (float) (centerY + length /2 * Math.sin(-angle)), 0);
         rightEnd.refresh();
     }
 
-    public void draw() {
+    public void draw(RenderType renderType) {
         if (!passed) {
             renderType.drawAlphaShape(gateLine);
         }
@@ -84,10 +89,10 @@ public class Gate {
     public boolean lineCrosses(float startX, float startY, float endX, float endY) {
         float dx = endX - startX;
         float dy = endY - startY;
-        float gateEndX = (float) (centerX + width/2 * Math.cos(-angle));
-        float gateEndY = (float) (centerY + width/2 * Math.sin(-angle));
-        float gateStartX = (float) (centerX - width/2 * Math.cos(-angle));
-        float gateStartY = (float) (centerY - width/2 * Math.sin(-angle));
+        float gateEndX = (float) (centerX + length /2 * Math.cos(-angle));
+        float gateEndY = (float) (centerY + length /2 * Math.sin(-angle));
+        float gateStartX = (float) (centerX - length /2 * Math.cos(-angle));
+        float gateStartY = (float) (centerY - length /2 * Math.sin(-angle));
         float leftCornerLineBoxX = Math.min(startX, endX);
         float leftCornerLineBoxY = Math.min(startY, endY);
         float rightCornerLineBoxX = Math.max(startX, endX);

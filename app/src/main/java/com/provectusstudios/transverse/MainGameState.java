@@ -2,7 +2,6 @@ package com.provectusstudios.transverse;
 
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
-import android.util.Log;
 import android.view.MotionEvent;
 
 import java.util.ArrayList;
@@ -53,12 +52,14 @@ public class MainGameState implements GameState {
     private boolean started;
 
     private long lastMoveCalc;
-    private float speed = 200;
+    private float speed = 150;
 
     private long lastTouchCalculationLeft = -1;
     private long lastTouchCalculationRight = -1;
 
     private boolean circlesInView = true;
+
+    private float endCurrentGenerate = 0;
 
     private ConcurrentLinkedQueue<Path.Point> leftPointsToAdd = new ConcurrentLinkedQueue<Path.Point>();
     private ConcurrentLinkedQueue<Path.Point> rightPointsToAdd = new ConcurrentLinkedQueue<Path.Point>();
@@ -84,12 +85,6 @@ public class MainGameState implements GameState {
 
     private List<Gate> leftGates = new ArrayList<Gate>();
     private List<Gate> rightGates = new ArrayList<Gate>();
-
-    private long nextAddLeftGate;
-    private long nextAddRightGate;
-
-    private long lastAddLeftGate = -1;
-    private long lastAddRightGate = -1;
 
     private long lastSpeedCalculation = -1;
 
@@ -274,14 +269,14 @@ public class MainGameState implements GameState {
         Iterator<Gate> leftGateIterator = leftGates.iterator();
         while (leftGateIterator.hasNext()) {
             Gate gate = leftGateIterator.next();
-            if (gate.getCenterY() - gate.getWidth()/2 - 5 > (height + verticalChange)) {
+            if (gate.getCenterY() - gate.getLength()/2 - 5 > (height + verticalChange)) {
                 leftGateIterator.remove();
             }
         }
         Iterator<Gate> rightGateIterator = rightGates.iterator();
         while (rightGateIterator.hasNext()) {
             Gate gate = rightGateIterator.next();
-            if (gate.getCenterY() - gate.getWidth()/2 - 5 > (height + verticalChange)) {
+            if (gate.getCenterY() - gate.getLength()/2 - 5 > (height + verticalChange)) {
                 rightGateIterator.remove();
             }
         }
@@ -295,87 +290,43 @@ public class MainGameState implements GameState {
         }
         int pointsToRemove = 0;
         float totalDistance = 0;
-        Path.Point prevPoint = leftPath.getPoints().get(leftPath.points.size()-1);
-        for (int i = leftPath.points.size() - 2; i >= 0; i--) {
-            Path.Point point = leftPath.points.get(i);
-            totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
-            if (totalDistance >= 100) {
-                leftPath.setAlpha(i, (200f - totalDistance)/100f);
+        if (leftPath.points.size() > 2) {
+            Path.Point prevPoint = leftPath.getPoints().get(leftPath.points.size() - 1);
+            for (int i = leftPath.points.size() - 2; i >= 0; i--) {
+                Path.Point point = leftPath.points.get(i);
+                totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
+                if (totalDistance >= 100) {
+                    leftPath.setAlpha(i, (200f - totalDistance) / 100f);
+                }
+                if (totalDistance >= 200) {
+                    pointsToRemove = i + 1;
+                    break;
+                }
+                prevPoint = point;
             }
-            if (totalDistance >= 200) {
-                pointsToRemove = i + 1;
-                break;
-            }
-            prevPoint = point;
+            leftPath.removeBottomPoints(pointsToRemove);
         }
-        leftPath.removeBottomPoints(pointsToRemove);
         while ((newPoint = rightPointsToAdd.poll()) != null) {
             rightPath.addTopPoint(newPoint);
         }
         pointsToRemove = 0;
         totalDistance = 0;
-        prevPoint = rightPath.getPoints().get(rightPath.points.size()-1);
-        for (int i = rightPath.points.size() - 2; i >= 0; i--) {
-            Path.Point point = rightPath.points.get(i);
-            totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
-            if (totalDistance >= 100) {
-                rightPath.setAlpha(i, (200f - totalDistance)/100f);
+        if (rightPath.points.size() > 2) {
+            Path.Point prevPoint = rightPath.getPoints().get(rightPath.points.size() - 1);
+            for (int i = rightPath.points.size() - 2; i >= 0; i--) {
+                Path.Point point = rightPath.points.get(i);
+                totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
+                if (totalDistance >= 100) {
+                    rightPath.setAlpha(i, (200f - totalDistance) / 100f);
+                }
+                if (totalDistance >= 200) {
+                    pointsToRemove = i + 1;
+                    break;
+                }
+                prevPoint = point;
             }
-            if (totalDistance >= 200) {
-                pointsToRemove = i + 1;
-                break;
-            }
-            prevPoint = point;
+            rightPath.removeBottomPoints(pointsToRemove);
         }
-        rightPath.removeBottomPoints(pointsToRemove);
-    }
-
-    public void addNewGates() {
-        long time = System.currentTimeMillis();
-        long leftGateDT = time - lastAddLeftGate;
-        boolean sane = true;
-        if (lastAddLeftGate == -1 || leftGateDT < 0) {
-            lastAddLeftGate = time;
-            nextAddLeftGate = (long) (random.nextFloat() * 3000 + 2000);
-            sane = false;
-        }
-        long rightGateDT = time - lastAddRightGate;
-        if (lastAddRightGate == -1 || rightGateDT < 0) {
-            lastAddRightGate = time;
-            nextAddRightGate = (long) (random.nextFloat() * 3000 + 2000);
-            sane = false;
-        }
-        if (!sane) {
-            return;
-        }
-        if (leftGateDT >= nextAddLeftGate) {
-            lastAddLeftGate = time;
-            nextAddLeftGate = (long) (random.nextFloat() * 3000 + 2000);
-            Gate gate = randomGate();
-            gate.setRenderType(leftRenderType);
-            gate.refresh();
-            leftGates.add(gate);
-        }
-        if (rightGateDT >= nextAddRightGate) {
-            lastAddRightGate = time;
-            nextAddRightGate = (long) (random.nextFloat() * 3000 + 2000);
-            Gate gate = randomGate();
-            gate.setRenderType(rightRenderType);
-            gate.refresh();
-            rightGates.add(gate);
-        }
-    }
-
-    private Gate randomGate() {
-        Gate gate = new Gate();
-        float angle = (float) (random.nextFloat()*Math.PI);
-        gate.setAngle(angle);
-        float gateWidth = random.nextFloat()*(width/3) + (width/8);
-        gate.setWidth(gateWidth);
-        float gateX = random.nextFloat()*(height - 10 - gateWidth) + gateWidth/2 + 5;
-        float gateY = verticalChange - gateWidth/2 - 5;
-        gate.setCenter(gateX, gateY);
-        return gate;
     }
 
     private void adjustSpeed() {
@@ -385,8 +336,22 @@ public class MainGameState implements GameState {
             lastSpeedCalculation = time;
             return;
         }
-        speed += ((float) dt)*(1f/100f);
+        speed += ((float) dt)*(1f/200f);
         lastSpeedCalculation = time;
+    }
+
+    private GateGenerator getGenerator() {
+        return new DualGateGenerator(new SimpleGateGenerator(), new SimpleGateGenerator());
+    }
+
+    private void generateGates() {
+        if (endCurrentGenerate >= verticalChange) {
+            GateGenerator gateGen = getGenerator();
+            gateGen.generateGates(random, verticalChange, width);
+            endCurrentGenerate = verticalChange - gateGen.getGenerateLength();
+            leftGates.addAll(gateGen.getLeftGates());
+            rightGates.addAll(gateGen.getRightGates());
+        }
     }
 
     @Override
@@ -416,7 +381,7 @@ public class MainGameState implements GameState {
             addNewPoints();
             calculateMove();
             checkGatesTouch();
-            addNewGates();
+            generateGates();
             adjustSpeed();
             float[] verticalTranslateMVP = new float[16];
             Matrix.multiplyMM(verticalTranslateMVP, 0, viewProjectionMatrix, 0, verticalTranslate, 0);
@@ -433,10 +398,10 @@ public class MainGameState implements GameState {
             leftRenderType.setMatrix(verticalTranslateMVP);
             rightRenderType.setMatrix(verticalTranslateMVP);
             for (Gate gate : leftGates) {
-                gate.draw();
+                gate.draw(leftRenderType);
             }
             for (Gate gate : rightGates) {
-                gate.draw();
+                gate.draw(rightRenderType);
             }
         }
     }
