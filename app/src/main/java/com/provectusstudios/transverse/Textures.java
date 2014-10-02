@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
+import android.util.Log;
 
 /**
  * Created by Justin on 8/11/2014.
@@ -16,7 +17,13 @@ public class Textures {
     public static int trophyTexture;
     public static int leaderboardTexture;
 
+    private static int maxTextureSize;
+
     public static void loadTextures(Context context) {
+        int[] max = new int[1];
+        GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, max, 0);
+        maxTextureSize = max[0];
+
         arialFontTexture = loadTextureFromResource(R.drawable.arial, context);
         fffForwardFontTexture = loadTextureFromResource(R.drawable.forward, context);
         trophyTexture = loadTextureFromResource(R.drawable.trophy, context);
@@ -24,6 +31,16 @@ public class Textures {
     }
 
     private static int loadTextureFromBitmap(Bitmap bitmap) {
+        if (bitmap.getHeight() >= maxTextureSize || bitmap.getWidth() >= maxTextureSize) {
+            float scaleFactor;
+            if (bitmap.getHeight() > bitmap.getWidth()) {
+                scaleFactor = ((float) maxTextureSize - 1)/((float) bitmap.getHeight());
+            } else {
+                scaleFactor = ((float) maxTextureSize - 1)/((float) bitmap.getWidth());
+            }
+            bitmap = Bitmap.createScaledBitmap(bitmap, (int) (bitmap.getWidth()*scaleFactor), (int) (bitmap.getHeight()*scaleFactor), true);
+        }
+
         int[] newTextureName = new int[1];
         GLES20.glGenTextures(1, newTextureName, 0);
         int textureName = newTextureName[0];
