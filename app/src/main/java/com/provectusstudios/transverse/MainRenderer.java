@@ -50,9 +50,10 @@ public class MainRenderer implements GLSurfaceView.Renderer {
 
         Shaders.loadShaders();
 
+        Log.d("Transverse", "Loading Textures");
         Textures.loadTextures(context);
 
-        Text.loadFont(context.getResources().getXml(R.xml.arial), Textures.arialFontTexture, "Arial");
+        Log.d("Transverse", "Loading font from XML");
         Text.loadFont(context.getResources().getXml(R.xml.forward), Textures.fffForwardFontTexture, "FFF Forward");
 
         GLES20.glEnable(GLES20.GL_DITHER);

@@ -12,7 +12,6 @@ import android.util.Log;
  */
 public class Textures {
 
-    public static int arialFontTexture;
     public static int fffForwardFontTexture;
     public static int trophyTexture;
     public static int leaderboardTexture;
@@ -23,15 +22,19 @@ public class Textures {
         int[] max = new int[1];
         GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, max, 0);
         maxTextureSize = max[0];
+        Log.d("Transverse", "Max Texture Size: " + maxTextureSize);
 
-        arialFontTexture = loadTextureFromResource(R.drawable.arial, context);
+        Log.d("Transverse", "Loading font texture");
         fffForwardFontTexture = loadTextureFromResource(R.drawable.forward, context);
+        Log.d("Transverse", "Loading trophy texture");
         trophyTexture = loadTextureFromResource(R.drawable.trophy, context);
+        Log.d("Transverse", "Loading leaderboard texture");
         leaderboardTexture = loadTextureFromResource(R.drawable.leaderboard, context);
     }
 
     private static int loadTextureFromBitmap(Bitmap bitmap) {
         if (bitmap.getHeight() >= maxTextureSize || bitmap.getWidth() >= maxTextureSize) {
+            Log.d("Transverse", "Texture too big scaling down");
             float scaleFactor;
             if (bitmap.getHeight() > bitmap.getWidth()) {
                 scaleFactor = ((float) maxTextureSize - 1)/((float) bitmap.getHeight());

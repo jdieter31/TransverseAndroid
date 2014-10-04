@@ -20,7 +20,7 @@ public class MainMenuState implements GameState {
     public MainMenuState(MainRenderer mainRenderer) {
         this.mainRenderer = mainRenderer;
         titleText = new Text();
-        titleText.setFont("Arial");
+        titleText.setFont("FFF Forward");
         titleText.setText("Main Menu");
         titleText.setTextSize(30);
         solidRenderType = new SolidRenderType();
