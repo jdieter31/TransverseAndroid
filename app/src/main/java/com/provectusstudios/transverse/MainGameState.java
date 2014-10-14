@@ -35,6 +35,7 @@ public class MainGameState implements GameState {
     private float lastRightVerticalChange;
 
     private int score = 0;
+    private Text scoreText;
 
     private boolean leftDown;
     private boolean rightDown;
@@ -101,6 +102,9 @@ public class MainGameState implements GameState {
 
     private float titleAlpha = 1;
     private long lastTitleCalculation = -1;
+
+    private float sectionToPass = 0;
+    private float nextSectionToPass = 0;
 
     public MainGameState(MainRenderer mainRenderer) {
         this.mainRenderer = mainRenderer;
@@ -227,15 +231,28 @@ public class MainGameState implements GameState {
 
     private void handleSectionTouch() {
         LineSegment touchChange;
+        boolean leftPast = false;
         while ((touchChange = leftTouchChanges.poll()) != null) {
             for (Section section : sectionsInView) {
                 section.handleTouchMove(touchChange.startX, touchChange.endX, touchChange.startY, touchChange.endY, false);
             }
+            if (touchChange.endY <= sectionToPass) {
+                leftPast = true;
+            }
         }
+        boolean rightPast = false;
         while ((touchChange = rightTouchChanges.poll()) != null) {
             for (Section section : sectionsInView) {
                 section.handleTouchMove(touchChange.startX, touchChange.endX, touchChange.startY, touchChange.endY, true);
             }
+            if (touchChange.endY <= sectionToPass) {
+                rightPast = true;
+            }
+        }
+        if (leftPast && rightPast) {
+            score += 1;
+            refreshScore();
+            sectionToPass = nextSectionToPass;
         }
     }
 
@@ -284,7 +301,7 @@ public class MainGameState implements GameState {
             }
         }
         if (circlesInView) {
-            if (verticalChange < -height/2 - 40) {
+            if (verticalChange < -height/2 - height/10) {
                 leftCircle = null;
                 rightCircle = null;
                 circlesInView = false;
@@ -407,6 +424,7 @@ public class MainGameState implements GameState {
             section.generate(random, 0, width, endCurrentGenerate);
             section.refresh();
             endCurrentGenerate = endCurrentGenerate - section.getLength();
+            nextSectionToPass = endCurrentGenerate;
             sectionsInView.add(section);
         }
     }
@@ -467,7 +485,8 @@ public class MainGameState implements GameState {
             for (Section section : sectionsInView) {
                 section.draw(verticalTranslateMVP);
             }
-
+            greyRenderType.setMatrix(viewProjectionMatrix);
+            greyRenderType.drawText(scoreText);
         }
     }
 
@@ -528,5 +547,16 @@ public class MainGameState implements GameState {
         backgroundRectangle.setHeight(height);
         backgroundRectangle.setOrigin(0, 0, 0);
         backgroundRectangle.refresh();
+        scoreText = new Text();
+        scoreText.setFont("FFF Forward");
+        scoreText.setTextSize(50f);
+        refreshScore();
     }
+
+    private void refreshScore() {
+        scoreText.setText(score + "");
+        scoreText.setOrigin(width - 25 - scoreText.getWidth(), 3, 0);
+        scoreText.refresh();
+    }
+
 }

@@ -81,22 +81,19 @@ public class GateSubSection implements SubSection {
         gate.setEndXPoints(startX, startX + width);
         float gateWidth = (float) (gateLength * Math.cos(-gateAngle));
         boolean adjustRight = random.nextFloat() > 0.5f;
-        if (gateX - gateWidth / 2 - width/5 < startX && gateX + gateWidth / 2 + width/5 > startX + width) {
-            Log.d("", "Gate goes over edges");
+        if (gateX - gateWidth / 2 - width/3 < startX && gateX + gateWidth / 2 + width/3 > startX + width) {
             if (adjustRight) {
-                gateX = startX + width/5 + gateWidth/2;
+                gateX = startX + width/3 + gateWidth/2;
             } else {
-                gateX = startX + width - gateWidth/2 - width/5;
+                gateX = startX + width - gateWidth/2 - width/3;
             }
         }
         if (gateX - gateWidth / 2 < startX) {
-            Log.d("", "Gate goes over left edge");
             gate.setGateLength((float) (2 * (gateX - (startX)) / Math.cos(gateAngle)));
         }
         if (gateX + gateWidth / 2 > startX + width) {
             gate.setGateLength((float) (2 * (startX + width - gateX) / Math.cos(gateAngle)));
-        }
-        float spacing = minSpacing + random.nextFloat()*spacingRange;
+        }        float spacing = minSpacing + random.nextFloat()*spacingRange;
         float gateY;
         if (gateAngle > 0) {
             gateY = (float) (startY - spacing - Math.abs((gateX - startX) * Math.tan(gateAngle)));
@@ -124,11 +121,11 @@ public class GateSubSection implements SubSection {
             gate.setEndXPoints(startX, startX + width);
             gateWidth = (float) (gateLength * Math.cos(-gateAngle));
             adjustRight = random.nextFloat() > 0.5f;
-            if (gateX - gateWidth / 2 - width/5 < startX && gateX + gateWidth / 2 + width/5 > startX + width) {
+            if (gateX - gateWidth / 2 - width/3 < startX && gateX + gateWidth / 2 + width/3 > startX + width) {
                 if (adjustRight) {
-                    gateX = startX + width/5 + gateWidth/2;
+                    gateX = startX + width/3 + gateWidth/2;
                 } else {
-                    gateX = startX + width - gateWidth/2 - width/5;
+                    gateX = startX + width - gateWidth/2 - width/3;
                 }
             }
             if (gateX - gateWidth / 2 < startX) {
