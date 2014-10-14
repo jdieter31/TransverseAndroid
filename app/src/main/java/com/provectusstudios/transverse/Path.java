@@ -26,9 +26,12 @@ public class Path implements AlphaShape {
     private short[] drawOrder = new short[0];
     private float[] alpha = new float[0];
 
-    private FloatBuffer verticeBuffer;
-    private FloatBuffer alphaBuffer;
-    private ShortBuffer drawOrderBuffer;
+    private FloatBuffer verticeBuffer = ByteBuffer.allocateDirect(0)
+            .order(ByteOrder.nativeOrder()).asFloatBuffer();
+    private FloatBuffer alphaBuffer = ByteBuffer.allocateDirect(0)
+            .order(ByteOrder.nativeOrder()).asFloatBuffer();
+    private ShortBuffer drawOrderBuffer = ByteBuffer.allocateDirect(0)
+            .order(ByteOrder.nativeOrder()).asShortBuffer();
     private int drawOrderLength;
 
     public void setWidth(float width) {
@@ -254,6 +257,11 @@ public class Path implements AlphaShape {
         drawOrderBuffer.put(drawOrder).position(0);
         drawOrderLength = drawOrder.length;
     }
+
+    public void setInverted(boolean inverted) {
+
+    }
+
 
     public void draw(int verticeMatrixHandle, int alphaHandle) {
         GLES20.glVertexAttribPointer(verticeMatrixHandle, 3, GLES20.GL_FLOAT, false,

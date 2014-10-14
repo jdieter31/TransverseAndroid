@@ -56,16 +56,25 @@ public class Line implements AlphaShape {
 
 
     public void refresh() {
-        float slope = -1f/((endY - y)/(endX - x));
-        float widthX = (float) Math.sqrt(Math.pow(width/2, 2)/(1 + Math.pow(slope, 2)));
-        float widthY = widthX * slope;
+        float widthX;
+        float widthY;
+        if (endY - y != 0) {
+            float slope = -1f / ((endY - y) / (endX - x));
+            widthX = (float) Math.sqrt(Math.pow(width / 2, 2) / (1 + Math.pow(slope, 2)));
+            widthY = widthX * slope;
+        } else {
+            widthX = 0;
+            widthY = width/2;
+        }
+        float alphaY = Math.min(widthY/2, 1f);
+        float alphaX = Math.min(widthX/2, 1f);
         vertices = new float[] {
                 x - widthX, y - widthY, z,
                 endX - widthX, endY - widthY, z,
-                x - widthX/2, y - widthY/2, z,
-                endX - widthX/2, endY - widthY/2, z,
-                x + widthX/2, y + widthY/2, z,
-                endX + widthX/2, endY + widthY/2, z,
+                x - widthX + alphaX, y - widthY + alphaY, z,
+                endX - widthX + alphaX, endY - widthY + alphaY, z,
+                x + widthX - alphaX, y + widthY - alphaY, z,
+                endX + widthX - alphaX, endY + widthY - alphaY, z,
                 x + widthX, y + widthY, z,
                 endX + widthX, endY + widthY, z
         };

@@ -1,98 +1,112 @@
 package com.provectusstudios.transverse;
 
-import android.util.Log;
-
 /**
  * Created by Justin on 9/21/2014.
  */
 public class Gate {
 
     private float angle;
-    private float length;
+    private float gateLength;
 
-    private float centerX;
-    private float centerY;
+    private float gateThickness = 5f;
 
-    private Circle leftEnd;
-    private Circle rightEnd;
-    private Line gateLine;
+    private float centerGateX;
+    private float centerGateY;
 
-    private boolean passed;
+    private float startX;
+    private float endX;
+
+    private boolean inverted;
+
+    private Line leftLine;
+    private Line rightLine;
 
     public void setAngle(float angle) {
         this.angle = angle;
     }
 
-    public void setLength(float length) {
-        this.length = length;
+    public void setGateLength(float gateLength) {
+        this.gateLength = gateLength;
     }
 
-    public void setCenter(float x, float y) {
-        this.centerX = x;
-        this.centerY = y;
+    public void setGateCenter(float x, float y) {
+        this.centerGateX = x;
+        this.centerGateY = y;
     }
 
-    public float getCenterX() {
-        return centerX;
+    public void setEndXPoints(float startX, float endX) {
+        this.startX = startX;
+        this.endX = endX;
     }
 
-    public float getCenterY() {
-        return centerY;
+    public float getGateCenterX() {
+        return centerGateX;
     }
 
-    public float getLength() {
-        return length;
+    public float getGateCenterY() {
+        return centerGateY;
+    }
+
+    public float getGateLength() {
+        return gateLength;
+    }
+
+    public float getAngle() {
+        return angle;
     }
 
     public float getHeight() {
-        return (float) Math.abs(length * Math.sin(angle));
+        return (float) Math.abs((endX - startX) * Math.tan(angle));
     }
 
     public float getWidth() {
-        return (float) Math.abs(length * Math.cos(angle));
+        return endX - startX;
+    }
+
+    public float getStartX() {
+        return startX;
+    }
+
+    public float getMinY() {
+        return (float) (centerGateY - Math.abs(Math.tan(angle) * (centerGateX - startX)));
     }
 
     public void refresh() {
-        gateLine = new Line();
-        gateLine.setStartPoint((float) (centerX - length /2 * Math.cos(-angle)), (float) (centerY - length /2 * Math.sin(-angle)), 0);
-        gateLine.setEndPoint((float) (centerX + length /2 * Math.cos(-angle)), (float) (centerY + length /2 * Math.sin(-angle)));
-        gateLine.setWidth(3f);
-        gateLine.refresh();
-        leftEnd = new Circle();
-        leftEnd.setPrecision(90);
-        leftEnd.setRadius(4f);
-        leftEnd.setCenter((float) (centerX - length /2 * Math.cos(-angle)), (float) (centerY - length /2 * Math.sin(-angle)), 0);
-        leftEnd.refresh();
-        rightEnd = new Circle();
-        rightEnd.setPrecision(90);
-        rightEnd.setRadius(4f);
-        rightEnd.setCenter((float) (centerX + length /2 * Math.cos(-angle)), (float) (centerY + length /2 * Math.sin(-angle)), 0);
-        rightEnd.refresh();
+        if (!inverted) {
+            leftLine = new Line();
+            leftLine.setStartPoint(startX - 2.5f, (float) (centerGateY - (centerGateX - startX) * Math.tan(-angle)), 0);
+            leftLine.setEndPoint((float) (centerGateX - gateLength / 2 * Math.cos(-angle)), (float) (centerGateY - gateLength / 2 * Math.sin(-angle)));
+            leftLine.setWidth(gateThickness);
+            leftLine.refresh();
+
+            rightLine = new Line();
+            rightLine.setStartPoint((float) (centerGateX + gateLength / 2 * Math.cos(-angle)), (float) (centerGateY + gateLength / 2 * Math.sin(-angle)), 0);
+            rightLine.setEndPoint(endX + 2.5f, (float) (centerGateY + (endX - centerGateX) * Math.tan(-angle)));
+            rightLine.setWidth(gateThickness);
+            rightLine.refresh();
+        } else {
+            leftLine = new Line();
+            leftLine.setStartPoint((float) (centerGateX - gateLength / 2 * Math.cos(-angle)), (float) (centerGateY - gateLength / 2 * Math.sin(-angle)), 0);
+            leftLine.setEndPoint((float) (centerGateX + gateLength / 2 * Math.cos(-angle)), (float) (centerGateY + gateLength / 2 * Math.sin(-angle)));
+            leftLine.setWidth(gateThickness);
+            leftLine.refresh();
+        }
     }
 
     public void draw(RenderType renderType) {
-        if (!passed) {
-            renderType.drawAlphaShape(gateLine);
+        renderType.drawAlphaShape(leftLine);
+        if (!inverted) {
+            renderType.drawAlphaShape(rightLine);
         }
-        renderType.drawShape(leftEnd);
-        renderType.drawShape(rightEnd);
-    }
-
-    public void setPassed(boolean passed) {
-        this.passed = passed;
-    }
-
-    public boolean isPassed() {
-        return passed;
     }
 
     public boolean lineCrosses(float startX, float startY, float endX, float endY) {
         float dx = endX - startX;
         float dy = endY - startY;
-        float gateEndX = (float) (centerX + length /2 * Math.cos(-angle));
-        float gateEndY = (float) (centerY + length /2 * Math.sin(-angle));
-        float gateStartX = (float) (centerX - length /2 * Math.cos(-angle));
-        float gateStartY = (float) (centerY - length /2 * Math.sin(-angle));
+        float gateEndX = (float) (centerGateX + gateLength /2 * Math.cos(-angle));
+        float gateEndY = (float) (centerGateY + gateLength /2 * Math.sin(-angle));
+        float gateStartX = (float) (centerGateX - gateLength /2 * Math.cos(-angle));
+        float gateStartY = (float) (centerGateY - gateLength /2 * Math.sin(-angle));
         float leftCornerLineBoxX = Math.min(startX, endX);
         float leftCornerLineBoxY = Math.min(startY, endY);
         float rightCornerLineBoxX = Math.max(startX, endX);
@@ -151,6 +165,14 @@ public class Gate {
             return true;
         }
         return false;
+    }
+
+    public void setGateThickness(float thickness) {
+        this.gateThickness = thickness;
+    }
+
+    public void setInverted(boolean inverted) {
+        this.inverted = inverted;
     }
 
 }

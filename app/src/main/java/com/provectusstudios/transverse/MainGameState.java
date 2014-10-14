@@ -1,7 +1,9 @@
 package com.provectusstudios.transverse;
 
+import android.graphics.Color;
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
+import android.util.Log;
 import android.view.MotionEvent;
 
 import java.util.ArrayList;
@@ -19,6 +21,8 @@ public class MainGameState implements GameState {
     private SolidRenderType leftRenderType;
     private SolidRenderType rightRenderType;
     private SolidRenderType greyRenderType;
+    private SolidRenderType sectionRenderType;
+    private SolidRenderType titleRenderType;
 
     private int leftPointer;
     private int rightPointer;
@@ -58,8 +62,11 @@ public class MainGameState implements GameState {
     private long lastTouchCalculationRight = -1;
 
     private boolean circlesInView = true;
+    private boolean wallsInView = true;
 
     private float endCurrentGenerate = 0;
+
+    private List<Section> sectionsInView = new ArrayList<Section>();
 
     private ConcurrentLinkedQueue<Path.Point> leftPointsToAdd = new ConcurrentLinkedQueue<Path.Point>();
     private ConcurrentLinkedQueue<Path.Point> rightPointsToAdd = new ConcurrentLinkedQueue<Path.Point>();
@@ -75,27 +82,28 @@ public class MainGameState implements GameState {
     private ConcurrentLinkedQueue<LineSegment> rightTouchChanges = new ConcurrentLinkedQueue<LineSegment>();
 
     private Rectangle backgroundRectangle;
-    private RoundedRectangle scoreRectangle;
-    private Text scoreText;
+
+    private Rectangle leftWall;
+    private Rectangle centerDivider;
+    private Rectangle rightWall;
 
     private RenderType backgroundRenderType;
     private RenderType scoreRectangleRenderType;
 
     private Random random = new Random();
 
-    private List<Gate> leftGates = new ArrayList<Gate>();
-    private List<Gate> rightGates = new ArrayList<Gate>();
-
     private long lastSpeedCalculation = -1;
+
+    private RoundedRectangle titleRectangle;
+    private Text titleText;
+
+    private boolean titleInView = true;
+
+    private float titleAlpha = 1;
+    private long lastTitleCalculation = -1;
 
     public MainGameState(MainRenderer mainRenderer) {
         this.mainRenderer = mainRenderer;
-        leftCircle = new Circle();
-        leftCircle.setPrecision(360);
-        leftCircle.setRadius(40);
-        rightCircle = new Circle();
-        rightCircle.setPrecision(360);
-        rightCircle.setRadius(40);
         greyRenderType = new SolidRenderType();
         greyRenderType.setAlpha(1);
         greyRenderType.setColor(.4f, .4f, .4f);
@@ -105,6 +113,9 @@ public class MainGameState implements GameState {
         rightRenderType = new SolidRenderType();
         rightRenderType.setAlpha(1);
         rightRenderType.setColor(.114f, .514f, .753f);
+        sectionRenderType = new SolidRenderType();
+        sectionRenderType.setAlpha(1);
+        sectionRenderType.setColor(.4f, .4f, .4f);
         verticalTranslate = new float[16];
         Matrix.setIdentityM(verticalTranslate, 0);
         leftPath.setWidth(5f);
@@ -113,6 +124,9 @@ public class MainGameState implements GameState {
         ((SolidRenderType) backgroundRenderType).setColor(.95f, .95f, .95f);
         scoreRectangleRenderType = new SolidRenderType();
         ((SolidRenderType) scoreRectangleRenderType).setColor(1f,1f,1f);
+        titleRenderType = new SolidRenderType();
+        titleRenderType.setColor(.204f, .553f, .686f);
+        titleRenderType.setAlpha(1f);
     }
 
     @Override
@@ -211,29 +225,17 @@ public class MainGameState implements GameState {
         }
     }
 
-    private void refreshScore() {
-        scoreText.setText("" + score);
-        scoreText.setOrigin(width/2 - scoreText.getWidth()/2, height/2 - height/4, 0);
-        scoreText.refresh();
-    }
-
-    private void handleGatesTouch(float endX, float endY, float startX, float startY, List<Gate> gates) {
-        for (Gate gate : gates) {
-            if (!gate.isPassed() && gate.lineCrosses(startX, startY, endX, endY)) {
-                score++;
-                refreshScore();
-                gate.setPassed(true);
-            }
-        }
-    }
-
-    private void checkGatesTouch() {
+    private void handleSectionTouch() {
         LineSegment touchChange;
         while ((touchChange = leftTouchChanges.poll()) != null) {
-            handleGatesTouch(touchChange.endX, touchChange.endY, touchChange.startX, touchChange.startY, leftGates);
+            for (Section section : sectionsInView) {
+                section.handleTouchMove(touchChange.startX, touchChange.endX, touchChange.startY, touchChange.endY, false);
+            }
         }
         while ((touchChange = rightTouchChanges.poll()) != null) {
-            handleGatesTouch(touchChange.endX, touchChange.endY, touchChange.startX, touchChange.startY, rightGates);
+            for (Section section : sectionsInView) {
+                section.handleTouchMove(touchChange.startX, touchChange.endX, touchChange.startY, touchChange.endY, true);
+            }
         }
     }
 
@@ -266,18 +268,26 @@ public class MainGameState implements GameState {
             rightTouchChanges.add(pathChange);
             lastRightVerticalChange = verticalChange;
         }
-        Iterator<Gate> leftGateIterator = leftGates.iterator();
-        while (leftGateIterator.hasNext()) {
-            Gate gate = leftGateIterator.next();
-            if (gate.getCenterY() - gate.getLength()/2 - 5 > (height + verticalChange)) {
-                leftGateIterator.remove();
+        Iterator<Section> sectionIterator = sectionsInView.iterator();
+        while (sectionIterator.hasNext()) {
+            Section section = sectionIterator.next();
+            if (section.getStartY() - section.getLength() > verticalChange + height) {
+                sectionIterator.remove();
             }
         }
-        Iterator<Gate> rightGateIterator = rightGates.iterator();
-        while (rightGateIterator.hasNext()) {
-            Gate gate = rightGateIterator.next();
-            if (gate.getCenterY() - gate.getLength()/2 - 5 > (height + verticalChange)) {
-                rightGateIterator.remove();
+        if (wallsInView) {
+            if (verticalChange < -height) {
+                wallsInView = false;
+                leftWall = null;
+                rightWall = null;
+                centerDivider = null;
+            }
+        }
+        if (circlesInView) {
+            if (verticalChange < -height/2 - 40) {
+                leftCircle = null;
+                rightCircle = null;
+                circlesInView = false;
             }
         }
         lastMoveCalc = time;
@@ -336,21 +346,68 @@ public class MainGameState implements GameState {
             lastSpeedCalculation = time;
             return;
         }
-        speed += ((float) dt)*(1f/200f);
+        speed += ((float) dt)*(1f/300f);
         lastSpeedCalculation = time;
     }
 
-    private GateGenerator getGenerator() {
-        return new DualGateGenerator(new SimpleGateGenerator(), new SimpleGateGenerator());
+    private Section getSection() {
+        GateSubSection subSection = new GateSubSection();
+        if (random.nextFloat() > .5f) {
+            subSection.setInverted(true);
+        }
+        Section section = new MirroredSection(subSection);
+        SolidRenderType sectionRenderType = new SolidRenderType();
+        float hue = random.nextFloat();
+        float luminance = random.nextFloat()*0.5f;
+        float saturation = random.nextFloat();
+        float q;
+        if (luminance < 0.5)
+            q = luminance * (1 + saturation);
+        else
+            q = (luminance + saturation) - (saturation * luminance);
+
+        float p = 2 * luminance - q;
+        float red = Math.max(0, hueToRGB(p, q, hue + (1.0f / 3.0f)));
+        float green = Math.max(0, hueToRGB(p, q, hue));
+        float blue = Math.max(0, hueToRGB(p, q, hue - (1.0f / 3.0f)));
+        sectionRenderType.setColor(red, green, blue);
+        sectionRenderType.setAlpha(1);
+        section.setRenderType(sectionRenderType);
+        return section;
     }
 
-    private void generateGates() {
-        if (endCurrentGenerate >= verticalChange) {
-            GateGenerator gateGen = getGenerator();
-            gateGen.generateGates(random, verticalChange, width);
-            endCurrentGenerate = verticalChange - gateGen.getGenerateLength();
-            leftGates.addAll(gateGen.getLeftGates());
-            rightGates.addAll(gateGen.getRightGates());
+
+    private float hueToRGB(float p, float q, float h)
+    {
+        if (h < 0) h += 1;
+
+        if (h > 1 ) h -= 1;
+
+        if (6 * h < 1)
+        {
+            return p + ((q - p) * 6 * h);
+        }
+
+        if (2 * h < 1 )
+        {
+            return  q;
+        }
+
+        if (3 * h < 2)
+        {
+            return p + ( (q - p) * 6 * ((2.0f / 3.0f) - h) );
+        }
+
+        return p;
+    }
+
+    private void generateSections() {
+        if (endCurrentGenerate >= verticalChange - 10) {
+            Section section = getSection();
+            section.generate(random, 0, width, endCurrentGenerate);
+            section.refresh();
+            endCurrentGenerate = endCurrentGenerate - section.getLength();
+            sectionsInView.add(section);
         }
     }
 
@@ -361,8 +418,7 @@ public class MainGameState implements GameState {
         backgroundRenderType.drawShape(backgroundRectangle);
         scoreRectangleRenderType.setMatrix(viewProjectionMatrix);
         scoreRectangleRenderType.setAlpha(1);
-        scoreRectangleRenderType.drawShape(scoreRectangle);
-        backgroundRenderType.drawText(scoreText);
+        titleRenderType.setMatrix(viewProjectionMatrix);
         if (!started) {
             greyRenderType.setMatrix(viewProjectionMatrix);
             leftRenderType.setMatrix(viewProjectionMatrix);
@@ -377,12 +433,17 @@ public class MainGameState implements GameState {
             } else {
                 greyRenderType.drawShape(rightCircle);
             }
+            greyRenderType.drawShape(leftWall);
+            greyRenderType.drawShape(centerDivider);
+            greyRenderType.drawShape(rightWall);
+            titleRenderType.drawShape(titleRectangle);
+            backgroundRenderType.drawText(titleText);
         } else {
             addNewPoints();
             calculateMove();
-            checkGatesTouch();
-            generateGates();
             adjustSpeed();
+            generateSections();
+            handleSectionTouch();
             float[] verticalTranslateMVP = new float[16];
             Matrix.multiplyMM(verticalTranslateMVP, 0, viewProjectionMatrix, 0, verticalTranslate, 0);
             leftRenderType.setMatrix(verticalTranslateMVP);
@@ -391,28 +452,73 @@ public class MainGameState implements GameState {
                 leftRenderType.drawShape(leftCircle);
                 rightRenderType.drawShape(rightCircle);
             }
+            if (wallsInView) {
+                greyRenderType.setMatrix(verticalTranslateMVP);
+                greyRenderType.drawShape(leftWall);
+                greyRenderType.drawShape(centerDivider);
+                greyRenderType.drawShape(rightWall);
+            }
             leftRenderType.setMatrix(viewProjectionMatrix);
             rightRenderType.setMatrix(viewProjectionMatrix);
             leftRenderType.drawAlphaShape(leftPath);
             rightRenderType.drawAlphaShape(rightPath);
             leftRenderType.setMatrix(verticalTranslateMVP);
             rightRenderType.setMatrix(verticalTranslateMVP);
-            for (Gate gate : leftGates) {
-                gate.draw(leftRenderType);
+            for (Section section : sectionsInView) {
+                section.draw(verticalTranslateMVP);
             }
-            for (Gate gate : rightGates) {
-                gate.draw(rightRenderType);
-            }
+
         }
     }
 
     @Override
     public void refreshDimensions(float width, float height, float[] viewProjectionMatrix) {
-        if (!started) {
+        if (circlesInView) {
+            leftCircle = new Circle();
+            leftCircle.setPrecision(360);
+            leftCircle.setRadius(height/10);
+            rightCircle = new Circle();
+            rightCircle.setPrecision(360);
+            rightCircle.setRadius(height/10);
             leftCircle.setCenter(width/4, height/2, 0);
             rightCircle.setCenter(3*width/4, height/2, 0);
             leftCircle.refresh();
             rightCircle.refresh();
+        }
+        if (wallsInView) {
+            leftWall = new Rectangle();
+            leftWall.setOrigin(0, 0, 0);
+            leftWall.setWidth(15f);
+            leftWall.setHeight(height);
+            leftWall.refresh();
+            centerDivider = new Rectangle();
+            centerDivider.setOrigin(width/2 - 7.5f, 0, 0);
+            centerDivider.setWidth(15f);
+            centerDivider.setHeight(height);
+            centerDivider.refresh();
+            rightWall = new Rectangle();
+            rightWall.setOrigin(width - 15, 0, 0);
+            rightWall.setWidth(15f);
+            rightWall.setHeight(height);
+            rightWall.refresh();
+        }
+        if (titleInView) {
+            titleRectangle = new RoundedRectangle();
+            float titleRectangleWidth = 2*width/3;
+            titleRectangle.setWidth(titleRectangleWidth);
+            float titleRectangleY = height/5;
+            float titleRectangleHeight = height/5;
+            titleRectangle.setCenter(width/2, titleRectangleY, 0);
+            titleRectangle.setHeight(titleRectangleHeight);
+            titleRectangle.setCornerRadius(10f);
+            titleRectangle.setPrecision(60);
+            titleRectangle.refresh();
+            titleText = new Text();
+            titleText.setFont("FFF Forward");
+            titleText.setText("Transverse");
+            titleText.setTextSize(titleRectangleHeight - 10);
+            titleText.setOrigin(width/2 - titleText.getWidth()/2, titleRectangleY - (titleRectangleHeight - 10)/2, 0);
+            titleText.refresh();
         }
         this.viewProjectionMatrix = viewProjectionMatrix;
         this.height = height;
@@ -422,16 +528,5 @@ public class MainGameState implements GameState {
         backgroundRectangle.setHeight(height);
         backgroundRectangle.setOrigin(0, 0, 0);
         backgroundRectangle.refresh();
-        scoreRectangle = new RoundedRectangle();
-        scoreRectangle.setWidth(width/2);
-        scoreRectangle.setHeight(height / 2);
-        scoreRectangle.setCenter(width / 2, height / 2, 0);
-        scoreRectangle.setCornerRadius(20);
-        scoreRectangle.setPrecision(40);
-        scoreRectangle.refresh();
-        scoreText = new Text();
-        scoreText.setFont("FFF Forward");
-        scoreText.setTextSize(height/2);
-        refreshScore();
     }
 }
