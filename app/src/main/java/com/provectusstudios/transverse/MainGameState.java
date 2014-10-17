@@ -1,9 +1,7 @@
 package com.provectusstudios.transverse;
 
-import android.graphics.Color;
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
-import android.util.Log;
 import android.view.MotionEvent;
 
 import java.util.ArrayList;
@@ -18,8 +16,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class MainGameState implements GameState {
     private MainRenderer mainRenderer;
 
-    private SolidRenderType leftRenderType;
-    private SolidRenderType rightRenderType;
+    private SolidRenderType lineRenderType;
     private SolidRenderType greyRenderType;
     private SolidRenderType sectionRenderType;
     private SolidRenderType titleRenderType;
@@ -97,6 +94,9 @@ public class MainGameState implements GameState {
 
     private RoundedRectangle titleRectangle;
     private Text titleText;
+    private RoundedRectangle tapToStartRectangle;
+    private Text tapAndHoldText;
+    private Text toStartText;
 
     private boolean titleInView = true;
 
@@ -111,12 +111,9 @@ public class MainGameState implements GameState {
         greyRenderType = new SolidRenderType();
         greyRenderType.setAlpha(1);
         greyRenderType.setColor(.4f, .4f, .4f);
-        leftRenderType = new SolidRenderType();
-        leftRenderType.setAlpha(1);
-        leftRenderType.setColor(.31f, .902f, .09f);
-        rightRenderType = new SolidRenderType();
-        rightRenderType.setAlpha(1);
-        rightRenderType.setColor(.114f, .514f, .753f);
+        lineRenderType = new SolidRenderType();
+        lineRenderType.setAlpha(1);
+        lineRenderType.setColor(.322f, .808f, 1f);
         sectionRenderType = new SolidRenderType();
         sectionRenderType.setAlpha(1);
         sectionRenderType.setColor(.4f, .4f, .4f);
@@ -322,10 +319,10 @@ public class MainGameState implements GameState {
             for (int i = leftPath.points.size() - 2; i >= 0; i--) {
                 Path.Point point = leftPath.points.get(i);
                 totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
-                if (totalDistance >= 100) {
-                    leftPath.setAlpha(i, (200f - totalDistance) / 100f);
+                if (totalDistance >= height/6) {
+                    leftPath.setAlpha(i, (height/3 - totalDistance) / (height/6));
                 }
-                if (totalDistance >= 200) {
+                if (totalDistance >= height/3) {
                     pointsToRemove = i + 1;
                     break;
                 }
@@ -343,10 +340,10 @@ public class MainGameState implements GameState {
             for (int i = rightPath.points.size() - 2; i >= 0; i--) {
                 Path.Point point = rightPath.points.get(i);
                 totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
-                if (totalDistance >= 100) {
-                    rightPath.setAlpha(i, (200f - totalDistance) / 100f);
+                if (totalDistance >= height/6) {
+                    rightPath.setAlpha(i, (height/3 - totalDistance) / (height/6));
                 }
-                if (totalDistance >= 200) {
+                if (totalDistance >= height/3) {
                     pointsToRemove = i + 1;
                     break;
                 }
@@ -439,23 +436,25 @@ public class MainGameState implements GameState {
         titleRenderType.setMatrix(viewProjectionMatrix);
         if (!started) {
             greyRenderType.setMatrix(viewProjectionMatrix);
-            leftRenderType.setMatrix(viewProjectionMatrix);
-            rightRenderType.setMatrix(viewProjectionMatrix);
+            lineRenderType.setMatrix(viewProjectionMatrix);
+            greyRenderType.drawShape(leftWall);
+            greyRenderType.drawShape(centerDivider);
+            greyRenderType.drawShape(rightWall);
+            titleRenderType.drawShape(tapToStartRectangle);
+            titleRenderType.drawShape(titleRectangle);
+            backgroundRenderType.drawText(titleText);
+            backgroundRenderType.drawText(tapAndHoldText);
+            backgroundRenderType.drawText(toStartText);
             if (leftDown) {
-                leftRenderType.drawShape(leftCircle);
+                lineRenderType.drawShape(leftCircle);
             } else {
                 greyRenderType.drawShape(leftCircle);
             }
             if (rightDown) {
-                rightRenderType.drawShape(rightCircle);
+                lineRenderType.drawShape(rightCircle);
             } else {
                 greyRenderType.drawShape(rightCircle);
             }
-            greyRenderType.drawShape(leftWall);
-            greyRenderType.drawShape(centerDivider);
-            greyRenderType.drawShape(rightWall);
-            titleRenderType.drawShape(titleRectangle);
-            backgroundRenderType.drawText(titleText);
         } else {
             addNewPoints();
             calculateMove();
@@ -464,24 +463,61 @@ public class MainGameState implements GameState {
             handleSectionTouch();
             float[] verticalTranslateMVP = new float[16];
             Matrix.multiplyMM(verticalTranslateMVP, 0, viewProjectionMatrix, 0, verticalTranslate, 0);
-            leftRenderType.setMatrix(verticalTranslateMVP);
-            rightRenderType.setMatrix(verticalTranslateMVP);
-            if (circlesInView) {
-                leftRenderType.drawShape(leftCircle);
-                rightRenderType.drawShape(rightCircle);
-            }
+            lineRenderType.setMatrix(verticalTranslateMVP);
             if (wallsInView) {
                 greyRenderType.setMatrix(verticalTranslateMVP);
                 greyRenderType.drawShape(leftWall);
                 greyRenderType.drawShape(centerDivider);
                 greyRenderType.drawShape(rightWall);
             }
-            leftRenderType.setMatrix(viewProjectionMatrix);
-            rightRenderType.setMatrix(viewProjectionMatrix);
-            leftRenderType.drawAlphaShape(leftPath);
-            rightRenderType.drawAlphaShape(rightPath);
-            leftRenderType.setMatrix(verticalTranslateMVP);
-            rightRenderType.setMatrix(verticalTranslateMVP);
+            if (titleInView) {
+                long time = System.currentTimeMillis();
+                long dt = time - lastTitleCalculation;
+                boolean sane = true;
+                if (lastTitleCalculation == -1 || dt <= 0) {
+                    lastTitleCalculation = time;
+                    sane = false;
+                    titleRenderType.setAlpha(titleAlpha);
+                    titleRenderType.drawShape(titleRectangle);
+                    backgroundRenderType.setAlpha(titleAlpha);
+                    backgroundRenderType.drawText(titleText);
+                    titleRenderType.drawShape(tapToStartRectangle);
+                    backgroundRenderType.drawText(tapAndHoldText);
+                    backgroundRenderType.drawText(toStartText);
+                }
+                if (sane) {
+                    float alphaChange = dt * (1/500f);
+                    titleAlpha -= alphaChange;
+                    if (titleAlpha < 0) {
+                       titleInView = false;
+                       titleAlpha = 0;
+                    }
+                    lastTitleCalculation = time;
+                    titleRenderType.setAlpha(titleAlpha);
+                    titleRenderType.drawShape(titleRectangle);
+                    titleRenderType.drawShape(tapToStartRectangle);
+                    backgroundRenderType.setAlpha(titleAlpha);
+                    backgroundRenderType.drawText(titleText);
+                    backgroundRenderType.drawText(tapAndHoldText);
+                    backgroundRenderType.drawText(toStartText);
+                    backgroundRenderType.setAlpha(1f);
+                    if (!titleInView) {
+                        titleRectangle = null;
+                        titleText = null;
+                        tapToStartRectangle = null;
+                        tapAndHoldText = null;
+                        toStartText = null;
+                    }
+                }
+            }
+            if (circlesInView) {
+                lineRenderType.drawShape(leftCircle);
+                lineRenderType.drawShape(rightCircle);
+            }
+            lineRenderType.setMatrix(viewProjectionMatrix);
+            lineRenderType.drawAlphaShape(leftPath);
+            lineRenderType.drawAlphaShape(rightPath);
+            lineRenderType.setMatrix(verticalTranslateMVP);
             for (Section section : sectionsInView) {
                 section.draw(verticalTranslateMVP);
             }
@@ -538,6 +574,25 @@ public class MainGameState implements GameState {
             titleText.setTextSize(titleRectangleHeight - 10);
             titleText.setOrigin(width/2 - titleText.getWidth()/2, titleRectangleY - (titleRectangleHeight - 10)/2, 0);
             titleText.refresh();
+            tapToStartRectangle = new RoundedRectangle();
+            tapToStartRectangle.setWidth(titleRectangleWidth);
+            tapToStartRectangle.setCenter(width/2, height/2, 0);
+            tapToStartRectangle.setHeight(height/4);
+            tapToStartRectangle.setCornerRadius(10f);
+            tapToStartRectangle.setPrecision(60);
+            tapToStartRectangle.refresh();
+            tapAndHoldText = new Text();
+            tapAndHoldText.setFont("FFF Forward");
+            tapAndHoldText.setText("Tap and hold");
+            tapAndHoldText.setTextSize((height/4)/3);
+            tapAndHoldText.setOrigin(width/2 - tapAndHoldText.getWidth()/2, height/2 - (height/4)/3, 0);
+            tapAndHoldText.refresh();
+            toStartText = new Text();
+            toStartText.setFont("FFF Forward");
+            toStartText.setText("to start!");
+            toStartText.setTextSize((height/4)/3);
+            toStartText.setOrigin(width/2 - toStartText.getWidth()/2, height/2, 0);
+            toStartText.refresh();
         }
         this.viewProjectionMatrix = viewProjectionMatrix;
         this.height = height;
