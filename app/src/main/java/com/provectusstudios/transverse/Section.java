@@ -8,7 +8,7 @@ import java.util.Random;
 public interface Section {
     public void draw(float[] matrix);
     public void refresh();
-    public void handleTouchMove(float startX, float endX, float startY, float endY, boolean rightSide);
+    public boolean handleTouchMove(float startX, float endX, float startY, float endY, boolean rightSide);
     public void setDifficulty(float difficulty);
     public void generate(Random random, float startX, float width, float startY);
     public float getStartX();

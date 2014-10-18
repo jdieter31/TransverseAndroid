@@ -2,6 +2,7 @@ package com.provectusstudios.transverse;
 
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
+import android.util.Log;
 import android.view.MotionEvent;
 
 import java.util.ArrayList;
@@ -226,12 +227,25 @@ public class MainGameState implements GameState {
         }
     }
 
+    private void handleLoss() {
+        Log.d("", "Game Lost");
+    }
+
     private void handleSectionTouch() {
         LineSegment touchChange;
         boolean leftPast = false;
         while ((touchChange = leftTouchChanges.poll()) != null) {
             for (Section section : sectionsInView) {
-                section.handleTouchMove(touchChange.startX, touchChange.endX, touchChange.startY, touchChange.endY, false);
+                if (wallsInView) {
+                   if (leftWall.lineSegmentCrosses(touchChange.startX, touchChange.startY, touchChange.endX, touchChange.endY)
+                           || rightWall.lineSegmentCrosses(touchChange.startX, touchChange.startY, touchChange.endX, touchChange.endY)
+                           || centerDivider.lineSegmentCrosses(touchChange.startX, touchChange.startY, touchChange.endX, touchChange.endY)) {
+                       handleLoss();
+                   }
+                }
+                if (section.handleTouchMove(touchChange.startX, touchChange.endX, touchChange.startY, touchChange.endY, false)) {
+                    handleLoss();
+                }
             }
             if (touchChange.endY <= sectionToPass) {
                 leftPast = true;
@@ -240,7 +254,9 @@ public class MainGameState implements GameState {
         boolean rightPast = false;
         while ((touchChange = rightTouchChanges.poll()) != null) {
             for (Section section : sectionsInView) {
-                section.handleTouchMove(touchChange.startX, touchChange.endX, touchChange.startY, touchChange.endY, true);
+                if(section.handleTouchMove(touchChange.startX, touchChange.endX, touchChange.startY, touchChange.endY, true)) {
+                    handleLoss();
+                }
             }
             if (touchChange.endY <= sectionToPass) {
                 rightPast = true;

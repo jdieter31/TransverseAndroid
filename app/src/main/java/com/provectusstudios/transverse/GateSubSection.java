@@ -35,8 +35,13 @@ public class GateSubSection implements SubSection {
     }
 
     @Override
-    public void handleTouchMove(float startX, float endX, float startY, float endY) {
-
+    public boolean handleTouchMove(float startX, float endX, float startY, float endY) {
+        for (Gate gate : gates) {
+            if (gate.lineSegmentCrosses(startX, startY, endX, endY)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

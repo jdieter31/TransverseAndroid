@@ -193,4 +193,25 @@ public class RoundedRectangle implements Shape {
         }
         return false;
     }
+
+    @Override
+    public boolean lineSegmentCrosses(float startX, float startY, float endX, float endY) {
+        float topLeftX = centerX - width/2;
+        float topLeftY = centerY - height/2;
+        float bottomRightX = centerX + width/2;
+        float bottomRightY = centerY + height/2;
+        if (UtilityMath.lineSegmentsCross(startX, startY, endX, endY, topLeftX + cornerRadius, topLeftY, bottomRightX - cornerRadius, topLeftY)
+                || UtilityMath.lineSegmentsCross(startX, startY, endX, endY, topLeftX + cornerRadius, bottomRightY, bottomRightX - cornerRadius, bottomRightY)
+                || UtilityMath.lineSegmentsCross(startX, startY, endX, endY, topLeftX, topLeftY + cornerRadius, topLeftX, bottomRightY - cornerRadius)
+                || UtilityMath.lineSegmentsCross(startX, startY, endX, endY, bottomRightX, topLeftY + cornerRadius, bottomRightX, bottomRightY - cornerRadius)
+                || UtilityMath.lineSegmentCrossesCircle(startX, startY, endX, endY, topLeftX + cornerRadius, topLeftY + cornerRadius, cornerRadius)
+                || UtilityMath.lineSegmentCrossesCircle(startX, startY, endX, endY, bottomRightX - cornerRadius, topLeftY + cornerRadius, cornerRadius)
+                || UtilityMath.lineSegmentCrossesCircle(startX, startY, endX, endY, topLeftX + cornerRadius, bottomRightY - cornerRadius, cornerRadius)
+                || UtilityMath.lineSegmentCrossesCircle(startX, startY, endX, endY, bottomRightX - cornerRadius, bottomRightY - cornerRadius, cornerRadius)) {
+            return true;
+        }
+        return false;
+    }
+
+
 }

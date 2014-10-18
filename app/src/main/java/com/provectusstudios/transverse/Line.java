@@ -105,4 +105,24 @@ public class Line implements AlphaShape {
 
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 8);
     }
+
+    public boolean lineSegmentCrosses(float startX, float startY, float endX, float endY) {
+        float widthX;
+        float widthY;
+        if (endY - y != 0) {
+            float slope = -1f / ((this.endY - y) / (this.endX - x));
+            widthX = (float) Math.sqrt(Math.pow(width / 2, 2) / (1 + Math.pow(slope, 2)));
+            widthY = widthX * slope;
+        } else {
+            widthX = 0;
+            widthY = width/2;
+        }
+        if (UtilityMath.lineSegmentsCross(startX, startY, endX, endY, x + widthX, y + widthY, this.endX + widthX, this.endY + widthY)
+                || UtilityMath.lineSegmentsCross(startX, startY, endX, endY, x - widthX, y - widthY, this.endX - widthX, this.endY - widthY)
+                || UtilityMath.lineSegmentsCross(startX, startY, endX, endY, x + widthX, y + widthY, x - widthX, y - widthY)
+                || UtilityMath.lineSegmentsCross(startX, startY, endX, endY, this.endX + widthX, this.endY + widthY, this.endX - widthX, this.endY - widthY)) {
+            return true;
+        }
+        return false;
+    }
 }

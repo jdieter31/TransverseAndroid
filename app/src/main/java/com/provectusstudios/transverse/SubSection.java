@@ -8,7 +8,7 @@ import java.util.Random;
 public interface SubSection {
     public void draw(RenderType renderType);
     public void refresh();
-    public void handleTouchMove(float startX, float endX, float startY, float endY);
+    public boolean handleTouchMove(float startX, float endX, float startY, float endY);
     public void generate(Random random, float width, float startX, float startY);
     public void generate(Random random, float width, float startX, float startY, float length);
     public float getLength();

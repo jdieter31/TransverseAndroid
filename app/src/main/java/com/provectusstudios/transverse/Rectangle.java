@@ -77,4 +77,15 @@ public class Rectangle implements Shape {
         }
         return false;
     }
+
+    @Override
+    public boolean lineSegmentCrosses(float startX, float startY, float endX, float endY) {
+        if (UtilityMath.lineSegmentsCross(x, y, x + width, y, startX, startY, endX, endY)
+                || UtilityMath.lineSegmentsCross(x, y, x, y + height, startX, startY, endX, endY)
+                || UtilityMath.lineSegmentsCross(x + width, y, x + width, y + height, startX, startY, endX, endY)
+                || UtilityMath.lineSegmentsCross(x, y + height, x + width, y + height, startX, startY, endX, endY)){
+            return true;
+        }
+        return false;
+    }
 }

@@ -57,8 +57,26 @@ public class MirroredSection implements Section {
     }
 
     @Override
-    public void handleTouchMove(float startX, float endX, float startY, float endY, boolean rightSide) {
-
+    public boolean handleTouchMove(float startX, float endX, float startY, float endY, boolean rightSide) {
+        if (firstLeftGateLeft.lineSegmentCrosses(startX, startY, endX, endY)
+                || firstLeftGateRight.lineSegmentCrosses(startX, startY, endX, endY)
+                || firstRightGateRight.lineSegmentCrosses(startX, startY, endX, endY)
+                || firstRightGateLeft.lineSegmentCrosses(startX, startY, endX, endY)
+                || rightWall.lineSegmentCrosses(startX, startY, endX, endY)
+                || leftWall.lineSegmentCrosses(startX, startY, endX, endY)
+                || centerDivider.lineSegmentCrosses(startX, startY, endX, endY)) {
+            return true;
+        }
+        if (rightSide) {
+            if (mirroredSection.handleTouchMove(startX, endX, startY, endY)) {
+                return true;
+            }
+        } else {
+            if (section.handleTouchMove(startX, endX, startY, endY)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
