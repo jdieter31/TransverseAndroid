@@ -70,7 +70,6 @@ public class Rectangle implements Shape {
                 GLES20.GL_UNSIGNED_SHORT, drawOrderBuffer);
     }
 
-    @Override
     public boolean containsPoint(float x, float y) {
         if (x >= this.x && x <= this.x + width && y >= this.y && y <= this.y + height) {
             return true;
@@ -78,7 +77,6 @@ public class Rectangle implements Shape {
         return false;
     }
 
-    @Override
     public boolean lineSegmentCrosses(float startX, float startY, float endX, float endY) {
         if (UtilityMath.lineSegmentsCross(x, y, x + width, y, startX, startY, endX, endY)
                 || UtilityMath.lineSegmentsCross(x, y, x, y + height, startX, startY, endX, endY)

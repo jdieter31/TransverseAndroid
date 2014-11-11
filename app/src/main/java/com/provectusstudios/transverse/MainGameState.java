@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * Created by Justin on 9/15/2014.
  */
 public class MainGameState implements GameState {
+
     private MainRenderer mainRenderer;
 
     private SolidRenderType lineRenderType;
@@ -24,13 +25,6 @@ public class MainGameState implements GameState {
 
     private int leftPointer;
     private int rightPointer;
-
-    private float lastLeftX;
-    private float lastLeftY;
-    private float lastLeftVerticalChange;
-    private float lastRightX;
-    private float lastRightY;
-    private float lastRightVerticalChange;
 
     private int score = 0;
     private Text scoreText;
@@ -67,8 +61,23 @@ public class MainGameState implements GameState {
 
     private List<Section> sectionsInView = new ArrayList<Section>();
 
-    private ConcurrentLinkedQueue<Path.Point> leftPointsToAdd = new ConcurrentLinkedQueue<Path.Point>();
-    private ConcurrentLinkedQueue<Path.Point> rightPointsToAdd = new ConcurrentLinkedQueue<Path.Point>();
+    private volatile float leftX;
+    private volatile float leftY;
+    private volatile float rightX;
+    private volatile float rightY;
+    private float lastLeftX;
+    private float lastLeftY;
+    private float lastRightX;
+    private float lastRightY;
+    private float lastVerticalChange;
+
+    private RenderType redRenderType;
+    private boolean inLossMenu;
+    private boolean animatingLoss;
+    private long timeOfLoss;
+    private RoundedRectangle loseScoreRectangle;
+    private Text loseScoreNumberText;
+    private Text loseScoreText;
 
     private class LineSegment {
         public float startX;
@@ -120,12 +129,15 @@ public class MainGameState implements GameState {
         sectionRenderType.setColor(.4f, .4f, .4f);
         verticalTranslate = new float[16];
         Matrix.setIdentityM(verticalTranslate, 0);
-        leftPath.setWidth(5f);
-        rightPath.setWidth(5f);
+        leftPath.setWidth(20f);
+        rightPath.setWidth(20f);
         backgroundRenderType = new SolidRenderType();
         ((SolidRenderType) backgroundRenderType).setColor(.95f, .95f, .95f);
         scoreRectangleRenderType = new SolidRenderType();
         ((SolidRenderType) scoreRectangleRenderType).setColor(1f,1f,1f);
+        redRenderType = new SolidRenderType();
+        ((SolidRenderType) redRenderType).setColor(1f, .275f, .2f);
+        redRenderType.setAlpha(1f);
         titleRenderType = new SolidRenderType();
         titleRenderType.setColor(.204f, .553f, .686f);
         titleRenderType.setAlpha(1f);
@@ -156,14 +168,14 @@ public class MainGameState implements GameState {
                     if (rightDown && leftDown) {
                         started = true;
                         lastMoveCalc = System.currentTimeMillis();
-                        Path.Point leftPoint = new Path.Point();
-                        leftPoint.x = MotionEventCompat.getX(event, MotionEventCompat.findPointerIndex(event, leftPointer))/density;
-                        leftPoint.y = MotionEventCompat.getY(event, MotionEventCompat.findPointerIndex(event, leftPointer))/density;
-                        leftPointsToAdd.add(leftPoint);
-                        Path.Point rightPoint = new Path.Point();
-                        rightPoint.x = MotionEventCompat.getX(event, MotionEventCompat.findPointerIndex(event, rightPointer))/density;
-                        rightPoint.y = MotionEventCompat.getY(event, MotionEventCompat.findPointerIndex(event, rightPointer))/density;
-                        rightPointsToAdd.add(rightPoint);
+                        leftX = MotionEventCompat.getX(event, MotionEventCompat.findPointerIndex(event, leftPointer))/density;
+                        leftY = MotionEventCompat.getY(event, MotionEventCompat.findPointerIndex(event, leftPointer))/density;
+                        lastLeftX = leftX;
+                        lastLeftY = leftY;
+                        rightX = MotionEventCompat.getX(event, MotionEventCompat.findPointerIndex(event, rightPointer))/density;
+                        rightY = MotionEventCompat.getY(event, MotionEventCompat.findPointerIndex(event, rightPointer))/density;
+                        lastRightX = rightX;
+                        lastRightY = rightY;
                     }
                 }
                 break;
@@ -190,36 +202,12 @@ public class MainGameState implements GameState {
                         y = MotionEventCompat.getY(event, i);
                         dpX = x/density;
                         dpY = y/density;
-                        if (pointerID == leftPointer && dpX != lastLeftX && dpY != lastLeftY) {
-                            Path.Point point = new Path.Point();
-                            point.x = dpX;
-                            point.y = dpY;
-                            leftPointsToAdd.add(point);
-                            LineSegment touchChange = new LineSegment();
-                            touchChange.startX = lastLeftX;
-                            touchChange.startY = lastLeftY + lastLeftVerticalChange;
-                            touchChange.endX = dpX;
-                            touchChange.endY = dpY + verticalChange;
-                            leftTouchChanges.add(touchChange);
-                            lastLeftVerticalChange = verticalChange;
-                            lastLeftX = dpX;
-                            lastLeftY = dpY;
-                            lastTouchCalculationLeft = System.currentTimeMillis();
+                        if (pointerID == leftPointer) {
+                            leftX = dpX;
+                            leftY = dpY;
                         } else if (pointerID == rightPointer && dpX != lastRightX && dpY != lastRightY) {
-                            Path.Point point = new Path.Point();
-                            point.x = dpX;
-                            point.y = dpY;
-                            rightPointsToAdd.add(point);
-                            LineSegment touchChange = new LineSegment();
-                            touchChange.startX = lastRightX;
-                            touchChange.startY = lastRightY + lastRightVerticalChange;
-                            touchChange.endX = dpX;
-                            touchChange.endY = dpY + verticalChange;
-                            rightTouchChanges.add(touchChange);
-                            lastRightVerticalChange = verticalChange;
-                            lastRightX = dpX;
-                            lastRightY = dpY;
-                            lastTouchCalculationRight = System.currentTimeMillis();
+                            rightX = dpX;
+                            rightY = dpY;
                         }
                     }
                 }
@@ -228,44 +216,120 @@ public class MainGameState implements GameState {
     }
 
     private void handleLoss() {
+        inLossMenu = true;
+        animatingLoss = true;
+        timeOfLoss = System.currentTimeMillis();
+        for (Section section : sectionsInView) {
+            section.setRenderType(redRenderType);
+        }
+        loseScoreRectangle = new RoundedRectangle();
+        loseScoreRectangle.setCenter(width/4, height/2, 0);
+        loseScoreRectangle.setWidth(width / 3);
+        loseScoreRectangle.setHeight(2 * height / 3);
+        loseScoreRectangle.setCornerRadius(10f);
+        loseScoreRectangle.setPrecision(60);
+        loseScoreRectangle.refresh();
+        loseScoreNumberText = new Text();
+        loseScoreNumberText.setFont("FFF Forward");
+        loseScoreNumberText.setTextSize(height / 3);
+        loseScoreNumberText.setText("" + score);
+        loseScoreNumberText.setOrigin(width / 4 - loseScoreNumberText.getWidth() / 2, height / 2 - 2 * height / 9, 0);
+        loseScoreNumberText.refresh();
+        loseScoreText = new Text();
+        loseScoreText.setFont("FFF Forward");
+        loseScoreText.setText("POINTS");
+        loseScoreText.setTextSize((2*height/3)/5);
+        loseScoreText.setOrigin(width/4 - loseScoreText.getWidth()/2, height/2 + height / 8, 0);
+        loseScoreText.refresh();
         Log.d("", "Game Lost");
     }
 
     private void handleSectionTouch() {
-        LineSegment touchChange;
         boolean leftPast = false;
-        while ((touchChange = leftTouchChanges.poll()) != null) {
-            for (Section section : sectionsInView) {
-                if (wallsInView) {
-                   if (leftWall.lineSegmentCrosses(touchChange.startX, touchChange.startY, touchChange.endX, touchChange.endY)
-                           || rightWall.lineSegmentCrosses(touchChange.startX, touchChange.startY, touchChange.endX, touchChange.endY)
-                           || centerDivider.lineSegmentCrosses(touchChange.startX, touchChange.startY, touchChange.endX, touchChange.endY)) {
-                       handleLoss();
-                   }
-                }
-                if (section.handleTouchMove(touchChange.startX, touchChange.endX, touchChange.startY, touchChange.endY, false)) {
-                    handleLoss();
-                }
+        Path.Point newLeftPoint = new Path.Point();
+        newLeftPoint.x = leftX;
+        newLeftPoint.y = leftY + verticalChange;
+        leftPath.addTopPoint(newLeftPoint);
+        if (wallsInView) {
+            if (leftWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftX, leftY + verticalChange)
+                    || rightWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftX, leftY + verticalChange)
+                    || centerDivider.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftX, leftY + verticalChange)) {
+                //handleLoss();
             }
-            if (touchChange.endY <= sectionToPass) {
-                leftPast = true;
+        }
+        for (Section section : sectionsInView) {
+            if (section.handleTouchMove(lastLeftX, leftX, lastLeftY + lastVerticalChange, leftY + verticalChange, false)) {
+                //handleLoss();
             }
+        }
+        if (leftY + verticalChange <= sectionToPass) {
+            leftPast = true;
         }
         boolean rightPast = false;
-        while ((touchChange = rightTouchChanges.poll()) != null) {
-            for (Section section : sectionsInView) {
-                if(section.handleTouchMove(touchChange.startX, touchChange.endX, touchChange.startY, touchChange.endY, true)) {
-                    handleLoss();
-                }
-            }
-            if (touchChange.endY <= sectionToPass) {
-                rightPast = true;
+        Path.Point newRightPoint = new Path.Point();
+        newRightPoint.x = rightX;
+        newRightPoint.y = rightY + verticalChange;
+        rightPath.addTopPoint(newRightPoint);
+        if (wallsInView) {
+            if (leftWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightX, rightY + verticalChange)
+                    || rightWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightX, rightY + verticalChange)
+                    || centerDivider.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightX, rightY + verticalChange)) {
+                handleLoss();
             }
         }
+        for (Section section : sectionsInView) {
+            if(section.handleTouchMove(lastRightX, rightX, lastRightY + lastVerticalChange, rightY + verticalChange, true)) {
+                handleLoss();
+            }
+        }
+        if (rightY + verticalChange <= sectionToPass) {
+            rightPast = true;
+        }
+        lastLeftX = leftX;
+        lastLeftY = leftY;
+        lastRightX = rightX;
+        lastRightY = rightY;
+        lastVerticalChange = verticalChange;
         if (leftPast && rightPast) {
             score += 1;
             refreshScore();
             sectionToPass = nextSectionToPass;
+        }
+        int pointsToRemove = 0;
+        float totalDistance = 0;
+        if (leftPath.points.size() > 2) {
+            Path.Point prevPoint = leftPath.getPoints().get(leftPath.points.size() - 1);
+            for (int i = leftPath.points.size() - 2; i >= 0; i--) {
+                Path.Point point = leftPath.points.get(i);
+                totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
+                if (totalDistance >= height/6) {
+                    leftPath.setAlpha(i, (height/3 - totalDistance) / (height/6));
+                }
+                if (totalDistance >= height/3) {
+                    pointsToRemove = i + 1;
+                    break;
+                }
+                prevPoint = point;
+            }
+            leftPath.removeBottomPoints(pointsToRemove);
+        }
+        pointsToRemove = 0;
+        totalDistance = 0;
+        if (rightPath.points.size() > 2) {
+            Path.Point prevPoint = rightPath.getPoints().get(rightPath.points.size() - 1);
+            for (int i = rightPath.points.size() - 2; i >= 0; i--) {
+                Path.Point point = rightPath.points.get(i);
+                totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
+                if (totalDistance >= height/6) {
+                    rightPath.setAlpha(i, (height/3 - totalDistance) / (height/6));
+                }
+                if (totalDistance >= height/3) {
+                    pointsToRemove = i + 1;
+                    break;
+                }
+                prevPoint = point;
+            }
+            rightPath.removeBottomPoints(pointsToRemove);
         }
     }
 
@@ -279,25 +343,6 @@ public class MainGameState implements GameState {
         float newVerticalChange = (((float) dt) / 1000f) * speed;
         verticalChange -= newVerticalChange;
         Matrix.translateM(verticalTranslate, 0, 0, newVerticalChange, 0);
-        if (lastTouchCalculationLeft != -1 && ((float) (time - lastTouchCalculationLeft))*speed/1000f > 5) {
-            LineSegment pathChange = new LineSegment();
-            pathChange.startX = lastLeftX;
-            pathChange.endX = lastLeftX;
-            pathChange.startY = lastLeftY + lastLeftVerticalChange;
-            pathChange.endY = lastLeftY + verticalChange;
-            leftTouchChanges.add(pathChange);
-            lastLeftVerticalChange = verticalChange;
-            lastTouchCalculationLeft = time;
-        }
-        if (lastTouchCalculationRight != -1 && ((float) (time - lastTouchCalculationRight))*speed/1000f > 5) {
-            LineSegment pathChange = new LineSegment();
-            pathChange.startX = lastRightX;
-            pathChange.endX = lastRightX;
-            pathChange.startY = lastRightY + lastRightVerticalChange;
-            pathChange.endY = lastRightY + verticalChange;
-            rightTouchChanges.add(pathChange);
-            lastRightVerticalChange = verticalChange;
-        }
         Iterator<Section> sectionIterator = sectionsInView.iterator();
         while (sectionIterator.hasNext()) {
             Section section = sectionIterator.next();
@@ -323,7 +368,7 @@ public class MainGameState implements GameState {
         lastMoveCalc = time;
     }
 
-    public void addNewPoints() {
+    /*public void addNewPoints() {
         Path.Point newPoint;
         while ((newPoint = leftPointsToAdd.poll()) != null) {
             leftPath.addTopPoint(newPoint);
@@ -367,7 +412,7 @@ public class MainGameState implements GameState {
             }
             rightPath.removeBottomPoints(pointsToRemove);
         }
-    }
+    }*/
 
     private void adjustSpeed() {
         long time = System.currentTimeMillis();
@@ -444,6 +489,7 @@ public class MainGameState implements GameState {
 
     @Override
     public void onDrawFrame() {
+
         backgroundRenderType.setMatrix(viewProjectionMatrix);
         backgroundRenderType.setAlpha(1);
         backgroundRenderType.drawShape(backgroundRectangle);
@@ -471,8 +517,40 @@ public class MainGameState implements GameState {
             } else {
                 greyRenderType.drawShape(rightCircle);
             }
+        } else if (inLossMenu) {
+            redRenderType.setAlpha(1);
+            float[] verticalTranslateMVP = new float[16];
+            Matrix.multiplyMM(verticalTranslateMVP, 0, viewProjectionMatrix, 0, verticalTranslate, 0);
+            redRenderType.setMatrix(verticalTranslateMVP);
+            redRenderType.setAlpha(.8f);
+            if (wallsInView) {
+                redRenderType.drawShape(leftWall);
+                redRenderType.drawShape(centerDivider);
+                redRenderType.drawShape(rightWall);
+            }
+            for (Section section : sectionsInView) {
+                section.draw(verticalTranslateMVP);
+            }
+            redRenderType.setMatrix(viewProjectionMatrix);
+            redRenderType.setAlpha(1f);
+            backgroundRenderType.setAlpha(1f);
+            if (animatingLoss) {
+                long dt = System.currentTimeMillis() - timeOfLoss;
+                float alpha = dt*(1f/1000f);
+                if (alpha > 1) {
+                    animatingLoss = false;
+                }
+                redRenderType.setAlpha(alpha);
+                redRenderType.drawShape(loseScoreRectangle);
+                backgroundRenderType.drawText(loseScoreNumberText);
+                backgroundRenderType.drawText(loseScoreText);
+            } else {
+                redRenderType.drawShape(loseScoreRectangle);
+                backgroundRenderType.drawText(loseScoreNumberText);
+                backgroundRenderType.drawText(loseScoreText);
+            }
         } else {
-            addNewPoints();
+            //addNewPoints();
             calculateMove();
             adjustSpeed();
             generateSections();
@@ -530,10 +608,9 @@ public class MainGameState implements GameState {
                 lineRenderType.drawShape(leftCircle);
                 lineRenderType.drawShape(rightCircle);
             }
-            lineRenderType.setMatrix(viewProjectionMatrix);
+            lineRenderType.setMatrix(verticalTranslateMVP);
             lineRenderType.drawAlphaShape(leftPath);
             lineRenderType.drawAlphaShape(rightPath);
-            lineRenderType.setMatrix(verticalTranslateMVP);
             for (Section section : sectionsInView) {
                 section.draw(verticalTranslateMVP);
             }

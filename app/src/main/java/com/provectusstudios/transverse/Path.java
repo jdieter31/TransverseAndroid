@@ -1,6 +1,7 @@
 package com.provectusstudios.transverse;
 
 import android.opengl.GLES20;
+import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -25,6 +26,7 @@ public class Path implements AlphaShape {
     private float[] vertices = new float[0];
     private short[] drawOrder = new short[0];
     private float[] alpha = new float[0];
+    private boolean[] flipped = new boolean[0];
 
     private FloatBuffer verticeBuffer = ByteBuffer.allocateDirect(0)
             .order(ByteOrder.nativeOrder()).asFloatBuffer();
@@ -91,6 +93,12 @@ public class Path implements AlphaShape {
         alphaBuffer = ByteBuffer.allocateDirect(alpha.length * 4)
                 .order(ByteOrder.nativeOrder()).asFloatBuffer();
         alphaBuffer.put(alpha).position(0);
+
+        boolean[] newFlipped = new boolean[points.size() - 1];
+        for (int i = numOfPoints; i < flipped.length; i++) {
+            newFlipped[i - numOfPoints] = flipped[numOfPoints];
+        }
+        flipped = newFlipped;
     }
 
     public void addTopPoint(Point point) {
@@ -110,7 +118,11 @@ public class Path implements AlphaShape {
             newAlpha[i] = alpha[i];
         }
         alpha = newAlpha;
-
+        boolean[] newFlipped = new boolean[points.size()-1];
+        for (int i = 0; i < flipped.length; i++) {
+            newFlipped[i] = flipped[i];
+        }
+        flipped = newFlipped;
         if (points.size() > 1) {
             insertSegment(points.size()-2);
         }
@@ -191,6 +203,24 @@ public class Path implements AlphaShape {
         float directionY = (endY - y)/magnitude;
         float perpendicularX = -directionY;
         float perpendicularY = directionX;
+        boolean shouldFlip = false;
+        if (index != 0) {
+            boolean lastFlip = flipped[index-1];
+            Point prevPoint = points.get(index - 1);
+            float prevX = prevPoint.x;
+            float prevY = prevPoint.y;
+            float prevVectorX = prevX - x;
+            float prevVectorY = prevY - y;
+            float prevMagnitude = (float) Math.sqrt(Math.pow(prevVectorX, 2) + Math.pow(prevVectorY, 2));
+            float angle = (float) Math.acos((prevVectorX*directionX + prevVectorY*directionY)/prevMagnitude);
+            if (angle <= Math.PI/2) {
+                Log.d("", "Flipping");
+                shouldFlip = !lastFlip;
+            } else {
+                shouldFlip = lastFlip;
+            }
+        }
+        flipped[index] = shouldFlip;
         if (index != 0) {
             vertices[index*24] = vertices[(index-1)*24 + 3];
             vertices[index*24 + 1] = vertices[(index - 1)*24 + 4];
@@ -218,18 +248,33 @@ public class Path implements AlphaShape {
             vertices[index*24 + 19] = y + perpendicularY*width/2;
             vertices[index*24 + 20] = 0;
         }
-        vertices[index*24 + 3] = endX - perpendicularX*width/2;
-        vertices[index*24 + 4] = endY - perpendicularY*width/2;
-        vertices[index*24 + 5] = 0;
-        vertices[index*24 + 9] = endX - perpendicularX*width/4;
-        vertices[index*24 + 10] = endY - perpendicularY*width/4;
-        vertices[index*24 + 11] = 0;
-        vertices[index*24 + 15] = endX + perpendicularX*width/4;
-        vertices[index*24 + 16] = endY + perpendicularY*width/4;
-        vertices[index*24 + 17] = 0;
-        vertices[index*24 + 21] = endX + perpendicularX*width/2;
-        vertices[index*24 + 22] = endY + perpendicularY*width/2;
-        vertices[index*24 + 23] = 0;
+        if (shouldFlip) {
+            vertices[index * 24 + 3] = endX + perpendicularX * width / 2;
+            vertices[index * 24 + 4] = endY + perpendicularY * width / 2;
+            vertices[index * 24 + 5] = 0;
+            vertices[index * 24 + 9] = endX + perpendicularX * width / 4;
+            vertices[index * 24 + 10] = endY + perpendicularY * width / 4;
+            vertices[index * 24 + 11] = 0;
+            vertices[index * 24 + 15] = endX - perpendicularX * width / 4;
+            vertices[index * 24 + 16] = endY - perpendicularY * width / 4;
+            vertices[index * 24 + 17] = 0;
+            vertices[index * 24 + 21] = endX - perpendicularX * width / 2;
+            vertices[index * 24 + 22] = endY - perpendicularY * width / 2;
+            vertices[index * 24 + 23] = 0;
+        } else {
+            vertices[index * 24 + 3] = endX - perpendicularX * width / 2;
+            vertices[index * 24 + 4] = endY - perpendicularY * width / 2;
+            vertices[index * 24 + 5] = 0;
+            vertices[index * 24 + 9] = endX - perpendicularX * width / 4;
+            vertices[index * 24 + 10] = endY - perpendicularY * width / 4;
+            vertices[index * 24 + 11] = 0;
+            vertices[index * 24 + 15] = endX + perpendicularX * width / 4;
+            vertices[index * 24 + 16] = endY + perpendicularY * width / 4;
+            vertices[index * 24 + 17] = 0;
+            vertices[index * 24 + 21] = endX + perpendicularX * width / 2;
+            vertices[index * 24 + 22] = endY + perpendicularY * width / 2;
+            vertices[index * 24 + 23] = 0;
+        }
     }
 
     public List<Point> getPoints() {
@@ -240,6 +285,7 @@ public class Path implements AlphaShape {
         drawOrder = new short[18*(points.size()-1)];
         vertices = new float[24*(points.size()-1)];
         alpha = new float[8*(points.size() - 1)];
+        flipped = new boolean[points.size() - 1];
         for (int i = 0; i < points.size() - 1; i++) {
             insertSegment(i);
         }
@@ -257,11 +303,6 @@ public class Path implements AlphaShape {
         drawOrderBuffer.put(drawOrder).position(0);
         drawOrderLength = drawOrder.length;
     }
-
-    public void setInverted(boolean inverted) {
-
-    }
-
 
     public void draw(int verticeMatrixHandle, int alphaHandle) {
         GLES20.glVertexAttribPointer(verticeMatrixHandle, 3, GLES20.GL_FLOAT, false,

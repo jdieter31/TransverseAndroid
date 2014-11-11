@@ -103,7 +103,6 @@ public class Circle implements Shape {
         }
     }
 
-    @Override
     public boolean containsPoint(float x, float y) {
         float dx = x - centerX;
         float dy = y - centerY;
@@ -113,7 +112,6 @@ public class Circle implements Shape {
         return false;
     }
 
-    @Override
     public boolean lineSegmentCrosses(float startX, float startY, float endX, float endY) {
         if (UtilityMath.lineSegmentCrossesCircle(startX, startY, endX, endY, centerX, centerY, radius)) {
             return true;

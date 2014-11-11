@@ -174,7 +174,6 @@ public class RoundedRectangle implements Shape {
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, precision + 1);
     }
 
-    @Override
     public boolean containsPoint(float x, float y) {
         float topLeftX = centerX - width/2;
         float topLeftY = centerY - height/2;
@@ -194,7 +193,6 @@ public class RoundedRectangle implements Shape {
         return false;
     }
 
-    @Override
     public boolean lineSegmentCrosses(float startX, float startY, float endX, float endY) {
         float topLeftX = centerX - width/2;
         float topLeftY = centerY - height/2;
