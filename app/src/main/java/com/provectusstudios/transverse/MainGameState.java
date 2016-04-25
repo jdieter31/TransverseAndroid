@@ -11,9 +11,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-/**
- * Created by Justin on 9/15/2014.
- */
+
 public class MainGameState implements GameState {
 
     private MainRenderer mainRenderer;
@@ -51,15 +49,12 @@ public class MainGameState implements GameState {
     private long lastMoveCalc;
     private float speed = 150;
 
-    private long lastTouchCalculationLeft = -1;
-    private long lastTouchCalculationRight = -1;
-
     private boolean circlesInView = true;
     private boolean wallsInView = true;
 
     private float endCurrentGenerate = 0;
 
-    private List<Section> sectionsInView = new ArrayList<Section>();
+    private List<Section> sectionsInView = new ArrayList<>();
 
     private volatile float leftX;
     private volatile float leftY;
@@ -78,16 +73,6 @@ public class MainGameState implements GameState {
     private RoundedRectangle loseScoreRectangle;
     private Text loseScoreNumberText;
     private Text loseScoreText;
-
-    private class LineSegment {
-        public float startX;
-        public float startY;
-        public float endX;
-        public float endY;
-    }
-
-    private ConcurrentLinkedQueue<LineSegment> leftTouchChanges = new ConcurrentLinkedQueue<LineSegment>();
-    private ConcurrentLinkedQueue<LineSegment> rightTouchChanges = new ConcurrentLinkedQueue<LineSegment>();
 
     private Rectangle backgroundRectangle;
 
@@ -160,26 +145,25 @@ public class MainGameState implements GameState {
                     if (!rightDown && rightCircle.containsPoint(dpX, dpY)) {
                         rightDown = true;
                         rightPointer = pointerID;
+                        rightX = dpX;
+                        rightY = dpY;
+                        lastRightX = rightX;
+                        lastRightY = rightY;
                     }
                     if (!leftDown && leftCircle.containsPoint(dpX, dpY)) {
+                        leftX = dpX;
+                        leftY = dpY;
+                        lastLeftX = leftX;
+                        lastLeftY = leftY;
                         leftDown = true;
                         leftPointer = pointerID;
                     }
                     if (rightDown && leftDown) {
                         started = true;
                         lastMoveCalc = System.currentTimeMillis();
-                        leftX = MotionEventCompat.getX(event, MotionEventCompat.findPointerIndex(event, leftPointer))/density;
-                        leftY = MotionEventCompat.getY(event, MotionEventCompat.findPointerIndex(event, leftPointer))/density;
-                        lastLeftX = leftX;
-                        lastLeftY = leftY;
-                        rightX = MotionEventCompat.getX(event, MotionEventCompat.findPointerIndex(event, rightPointer))/density;
-                        rightY = MotionEventCompat.getY(event, MotionEventCompat.findPointerIndex(event, rightPointer))/density;
-                        lastRightX = rightX;
-                        lastRightY = rightY;
                     }
                 }
                 break;
-            case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP:
                 pointerIndex = MotionEventCompat.getActionIndex(event);
                 pointerID = MotionEventCompat.getPointerId(event, pointerIndex);
@@ -191,6 +175,10 @@ public class MainGameState implements GameState {
                     if (leftDown && pointerID == leftPointer) {
                         leftDown = false;
                         leftPointer = 0;
+                    }
+                } else if (!inLossMenu) {
+                    if (pointerID == leftPointer || pointerID == rightPointer) {
+                        handleLoss();
                     }
                 }
                 break;
@@ -205,7 +193,7 @@ public class MainGameState implements GameState {
                         if (pointerID == leftPointer) {
                             leftX = dpX;
                             leftY = dpY;
-                        } else if (pointerID == rightPointer && dpX != lastRightX && dpY != lastRightY) {
+                        } else if (pointerID == rightPointer) {
                             rightX = dpX;
                             rightY = dpY;
                         }
@@ -241,7 +229,6 @@ public class MainGameState implements GameState {
         loseScoreText.setTextSize((2*height/3)/5);
         loseScoreText.setOrigin(width/4 - loseScoreText.getWidth()/2, height/2 + height / 8, 0);
         loseScoreText.refresh();
-        Log.d("", "Game Lost");
     }
 
     private void handleSectionTouch() {
@@ -254,12 +241,12 @@ public class MainGameState implements GameState {
             if (leftWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftX, leftY + verticalChange)
                     || rightWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftX, leftY + verticalChange)
                     || centerDivider.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftX, leftY + verticalChange)) {
-                //handleLoss();
+                handleLoss();
             }
         }
         for (Section section : sectionsInView) {
             if (section.handleTouchMove(lastLeftX, leftX, lastLeftY + lastVerticalChange, leftY + verticalChange, false)) {
-                //handleLoss();
+                handleLoss();
             }
         }
         if (leftY + verticalChange <= sectionToPass) {
@@ -421,7 +408,7 @@ public class MainGameState implements GameState {
             lastSpeedCalculation = time;
             return;
         }
-        speed += ((float) dt)*(1f/300f);
+        speed += ((float) dt)*(1f/500f)*(1f + 7*Math.log1p(score/10f));
         lastSpeedCalculation = time;
     }
 
@@ -507,6 +494,7 @@ public class MainGameState implements GameState {
             backgroundRenderType.drawText(titleText);
             backgroundRenderType.drawText(tapAndHoldText);
             backgroundRenderType.drawText(toStartText);
+
             if (leftDown) {
                 lineRenderType.drawShape(leftCircle);
             } else {
@@ -550,7 +538,6 @@ public class MainGameState implements GameState {
                 backgroundRenderType.drawText(loseScoreText);
             }
         } else {
-            //addNewPoints();
             calculateMove();
             adjustSpeed();
             generateSections();
