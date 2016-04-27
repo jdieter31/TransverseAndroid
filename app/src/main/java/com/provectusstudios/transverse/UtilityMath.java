@@ -1,5 +1,7 @@
 package com.provectusstudios.transverse;
 
+import android.util.Log;
+
 /**
  * Created by Justin on 10/17/2014.
  */
@@ -7,64 +9,59 @@ public class UtilityMath {
     public static boolean lineSegmentsCross(float startX, float startY, float endX, float endY,
                                             float secondStartX, float secondStartY,
                                             float secondEndX, float secondEndY) {
-        float dx = endX - startX;
-        float dy = endY - startY;
-        float leftCornerLineBoxX = Math.min(startX, endX);
-        float leftCornerLineBoxY = Math.min(startY, endY);
-        float rightCornerLineBoxX = Math.max(startX, endX);
-        float rightCornerLineBoxY = Math.max(startY, endY);
-        float leftCornerGateBoxX = Math.min(secondStartX, secondEndX);
-        float leftCornerGateBoxY = Math.min(secondStartY, secondEndY);
-        float rightCornerGateBoxX = Math.max(secondStartX, secondEndX);
-        float rightCornerGateBoxY = Math.max(secondStartY, secondEndY);
-        float intersectRectangleLeftX;
-        float intersectRectangleLeftY;
-        float intersectRectangleRightX;
-        float intersectRectangleRightY;
-        if (!(leftCornerLineBoxX < rightCornerGateBoxX && rightCornerLineBoxX > leftCornerGateBoxX
-                && leftCornerLineBoxY < rightCornerGateBoxY && rightCornerLineBoxY > leftCornerGateBoxY)) {
-            return false;
+        float firstXMin = Math.min(startX, endX);
+        float secondXMin = Math.min(secondStartX, secondEndX);
+        float firstXMax = Math.max(startX, endX);
+        float secondXMax = Math.max(secondStartX, secondEndX);
+
+        float firstYMin = Math.min(startY, endY);
+        float secondYMin = Math.min(secondStartY, secondEndY);
+        float firstYMax = Math.max(startY, endY);
+        float secondYMax = Math.max(secondStartY, secondEndY);
+
+        float xSolution;
+        float usableSlope;
+        float usableIntercept;
+
+        float slope1 = (endY - startY) / (endX - startX);
+        float intercept1 = startY - slope1 * startX;
+
+        float slope2 = (secondEndY - secondStartY) / (secondEndX - secondStartX);
+        float intercept2 = secondStartY - slope2 * secondStartX;
+
+        if (endX - startX == 0) {
+            if (secondEndX - secondStartX == 0) {
+                if (endX == secondEndX) {
+                    return true;
+                }
+                return false;
+            }
+            xSolution = startX;
+            usableSlope = slope2;
+            usableIntercept = intercept2;
+        } else if (secondEndX - secondStartX == 0) {
+            xSolution = secondStartX;
+            usableSlope = slope1;
+            usableIntercept = intercept1;
         } else {
-            intersectRectangleLeftX = Math.max(leftCornerLineBoxX, leftCornerGateBoxX);
-            intersectRectangleLeftY = Math.max(leftCornerLineBoxY, leftCornerGateBoxY);
-            intersectRectangleRightX = Math.min(rightCornerGateBoxX, rightCornerLineBoxX);
-            intersectRectangleRightY = Math.min(rightCornerGateBoxY, rightCornerLineBoxY);
+
+            if (slope1 == slope2) {
+                if (intercept1 == intercept2) {
+                    return true;
+                }
+                return false;
+            }
+            xSolution = (intercept1 - intercept2) / (slope2 - slope1);
+
+            usableIntercept = intercept1;
+            usableSlope = slope1;
         }
-        float gateDX = secondEndX - secondStartX;
-        float gateDY = secondEndY - secondStartY;
-        boolean equalSlopes = false;
-        float gateSlope = gateDY/gateDX;
-        float slope = dy/dx;
-        if (dy == 0 && gateDY == 0) {
-            equalSlopes = true;
-        } else if (gateDX == 0 && dx == 0) {
-            equalSlopes = true;
-        } else if (slope == gateSlope) {
-            equalSlopes = true;
-        }
-        if (equalSlopes) {
-            if ((startX == secondStartX && startY == secondStartY)|| (endX == secondStartX && endY == secondStartY)) {
+        float ySolution = xSolution * usableSlope + usableIntercept;
+
+        if (xSolution >= Math.max(firstXMin, secondXMin) && xSolution <= Math.min(firstXMax, secondXMax)) {
+            if (ySolution >= Math.max(firstYMin, secondYMin) && ySolution <= Math.min(firstYMax, secondYMax)) {
                 return true;
             }
-            return false;
-        }
-        float xIntersectLine;
-        float yIntersectLine;
-        float gateYIntercept = secondStartY - gateSlope*secondStartX;
-        float lineYIntercept = startY - slope*startX;
-        if (dx == 0) {
-            xIntersectLine = startX;
-            yIntersectLine = startX*gateSlope + gateYIntercept;
-        } else if (gateDX == 0) {
-            xIntersectLine = secondStartX;
-            yIntersectLine = secondStartX*slope + lineYIntercept;
-        } else {
-            xIntersectLine = (gateYIntercept - lineYIntercept)/(slope - gateSlope);
-            yIntersectLine = xIntersectLine*slope + lineYIntercept;
-        }
-        if (xIntersectLine >= intersectRectangleLeftX && xIntersectLine <= intersectRectangleRightX
-                && yIntersectLine >= intersectRectangleLeftY && yIntersectLine <= intersectRectangleRightY) {
-            return true;
         }
         return false;
     }

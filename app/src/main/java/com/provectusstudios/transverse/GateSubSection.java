@@ -56,7 +56,10 @@ public class GateSubSection implements SubSection {
         this.length = length;
         float minSpacing = 200f;
         float spacingRange = 200f*random.nextFloat();
-        float angleRange = (float) (random.nextFloat()*Math.PI/8);
+        float angleRange = 0;
+        if (random.nextFloat() > .4) {
+            angleRange = (float) (random.nextFloat()*Math.PI/8);
+        }
         float positionDeviation = width / 9 + random.nextFloat() * (2 * width / 9);;
         float lengthMinimum;
         float lengthRange;

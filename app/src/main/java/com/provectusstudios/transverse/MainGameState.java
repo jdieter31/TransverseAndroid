@@ -164,6 +164,7 @@ public class MainGameState implements GameState {
                     }
                 }
                 break;
+            case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP:
                 pointerIndex = MotionEventCompat.getActionIndex(event);
                 pointerID = MotionEventCompat.getPointerId(event, pointerIndex);
@@ -354,52 +355,6 @@ public class MainGameState implements GameState {
         }
         lastMoveCalc = time;
     }
-
-    /*public void addNewPoints() {
-        Path.Point newPoint;
-        while ((newPoint = leftPointsToAdd.poll()) != null) {
-            leftPath.addTopPoint(newPoint);
-        }
-        int pointsToRemove = 0;
-        float totalDistance = 0;
-        if (leftPath.points.size() > 2) {
-            Path.Point prevPoint = leftPath.getPoints().get(leftPath.points.size() - 1);
-            for (int i = leftPath.points.size() - 2; i >= 0; i--) {
-                Path.Point point = leftPath.points.get(i);
-                totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
-                if (totalDistance >= height/6) {
-                    leftPath.setAlpha(i, (height/3 - totalDistance) / (height/6));
-                }
-                if (totalDistance >= height/3) {
-                    pointsToRemove = i + 1;
-                    break;
-                }
-                prevPoint = point;
-            }
-            leftPath.removeBottomPoints(pointsToRemove);
-        }
-        while ((newPoint = rightPointsToAdd.poll()) != null) {
-            rightPath.addTopPoint(newPoint);
-        }
-        pointsToRemove = 0;
-        totalDistance = 0;
-        if (rightPath.points.size() > 2) {
-            Path.Point prevPoint = rightPath.getPoints().get(rightPath.points.size() - 1);
-            for (int i = rightPath.points.size() - 2; i >= 0; i--) {
-                Path.Point point = rightPath.points.get(i);
-                totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
-                if (totalDistance >= height/6) {
-                    rightPath.setAlpha(i, (height/3 - totalDistance) / (height/6));
-                }
-                if (totalDistance >= height/3) {
-                    pointsToRemove = i + 1;
-                    break;
-                }
-                prevPoint = point;
-            }
-            rightPath.removeBottomPoints(pointsToRemove);
-        }
-    }*/
 
     private void adjustSpeed() {
         long time = System.currentTimeMillis();

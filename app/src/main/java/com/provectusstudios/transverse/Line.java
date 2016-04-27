@@ -1,6 +1,7 @@
 package com.provectusstudios.transverse;
 
 import android.opengl.GLES20;
+import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -109,10 +110,13 @@ public class Line implements AlphaShape {
     public boolean lineSegmentCrosses(float startX, float startY, float endX, float endY) {
         float widthX;
         float widthY;
-        if (endY - y != 0) {
+        if (this.endY - y != 0 && this.endX - x != 0) {
             float slope = -1f / ((this.endY - y) / (this.endX - x));
-            widthX = (float) Math.sqrt(Math.pow(width / 2, 2) / (1 + Math.pow(slope, 2)));
+            widthX = (width/2) / (float) Math.sqrt(Math.pow(slope, 2) + 1);
             widthY = widthX * slope;
+        } else if (this.endY - y == 0) {
+            widthX = width/2;
+            widthY = 0;
         } else {
             widthX = 0;
             widthY = width/2;
