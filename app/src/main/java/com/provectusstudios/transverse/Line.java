@@ -1,15 +1,11 @@
 package com.provectusstudios.transverse;
 
 import android.opengl.GLES20;
-import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
-/**
- * Created by Justin on 8/18/2014.
- */
 public class Line implements AlphaShape {
     private float x;
     private float y;
@@ -59,13 +55,16 @@ public class Line implements AlphaShape {
     public void refresh() {
         float widthX;
         float widthY;
-        if (endY - y != 0) {
-            float slope = -1f / ((endY - y) / (endX - x));
-            widthX = (float) Math.sqrt(Math.pow(width / 2, 2) / (1 + Math.pow(slope, 2)));
+        if (this.endY - y != 0 && this.endX - x != 0) {
+            float slope = -1f / ((this.endY - y) / (this.endX - x));
+            widthX = (width/2) / (float) Math.sqrt(Math.pow(slope, 2) + 1);
             widthY = widthX * slope;
-        } else {
+        } else if (this.endY - y == 0) {
             widthX = 0;
             widthY = width/2;
+        } else {
+            widthX = width/2;
+            widthY = 0;
         }
         float alphaY = Math.min(widthY/2, 1f);
         float alphaX = Math.min(widthX/2, 1f);
@@ -115,18 +114,15 @@ public class Line implements AlphaShape {
             widthX = (width/2) / (float) Math.sqrt(Math.pow(slope, 2) + 1);
             widthY = widthX * slope;
         } else if (this.endY - y == 0) {
-            widthX = width/2;
-            widthY = 0;
-        } else {
             widthX = 0;
             widthY = width/2;
+        } else {
+            widthX = width/2;
+            widthY = 0;
         }
-        if (UtilityMath.lineSegmentsCross(startX, startY, endX, endY, x + widthX, y + widthY, this.endX + widthX, this.endY + widthY)
+        return UtilityMath.lineSegmentsCross(startX, startY, endX, endY, x + widthX, y + widthY, this.endX + widthX, this.endY + widthY)
                 || UtilityMath.lineSegmentsCross(startX, startY, endX, endY, x - widthX, y - widthY, this.endX - widthX, this.endY - widthY)
                 || UtilityMath.lineSegmentsCross(startX, startY, endX, endY, x + widthX, y + widthY, x - widthX, y - widthY)
-                || UtilityMath.lineSegmentsCross(startX, startY, endX, endY, this.endX + widthX, this.endY + widthY, this.endX - widthX, this.endY - widthY)) {
-            return true;
-        }
-        return false;
+                || UtilityMath.lineSegmentsCross(startX, startY, endX, endY, this.endX + widthX, this.endY + widthY, this.endX - widthX, this.endY - widthY);
     }
 }

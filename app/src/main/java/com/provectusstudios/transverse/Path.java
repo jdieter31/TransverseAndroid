@@ -1,12 +1,10 @@
 package com.provectusstudios.transverse;
 
 import android.opengl.GLES20;
-import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,7 +52,7 @@ public class Path implements AlphaShape {
             return;
         }
         float[] newVertices = new float[3*points.size()];
-        System.arraycopy(vertices, 3 * numOfPoints, newVertices, 3 * numOfPoints - 3 * numOfPoints, vertices.length - 3 * numOfPoints);
+        System.arraycopy(vertices, 3 * numOfPoints, newVertices, 0, vertices.length - 3 * numOfPoints);
         vertices = newVertices;
         verticeBuffer = ByteBuffer.allocateDirect(vertices.length * 4)
                 .order(ByteOrder.nativeOrder()).asFloatBuffer();
@@ -62,7 +60,7 @@ public class Path implements AlphaShape {
 
 
         float[] newAlpha = new float[points.size()];
-        System.arraycopy(alpha, numOfPoints, newAlpha, numOfPoints - numOfPoints, alpha.length - numOfPoints);
+        System.arraycopy(alpha, numOfPoints, newAlpha, 0, alpha.length - numOfPoints);
         alpha = newAlpha;
         alphaBuffer = ByteBuffer.allocateDirect(alpha.length * 4)
                 .order(ByteOrder.nativeOrder()).asFloatBuffer();

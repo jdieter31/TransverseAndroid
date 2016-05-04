@@ -1,69 +1,65 @@
 package com.provectusstudios.transverse;
 
-import android.util.Log;
-
-/**
- * Created by Justin on 10/17/2014.
- */
 public class UtilityMath {
-    public static boolean lineSegmentsCross(float startX, float startY, float endX, float endY,
-                                            float secondStartX, float secondStartY,
-                                            float secondEndX, float secondEndY) {
-        float firstXMin = Math.min(startX, endX);
-        float secondXMin = Math.min(secondStartX, secondEndX);
-        float firstXMax = Math.max(startX, endX);
-        float secondXMax = Math.max(secondStartX, secondEndX);
+    public static boolean lineSegmentsCross(float x1, float y1, float x2, float y2,
+                                            float x3, float y3,
+                                            float x4, float y4) {
+        // Return false if either of the lines have zero length
+        if (x1 == x2 && y1 == y2 ||
+                x3 == x4 && y3 == y4){
+            return false;
+        }
+        // Fastest method, based on Franklin Antonio's "Faster Line Segment Intersection" topic "in Graphics Gems III" book (http://www.graphicsgems.org/)
+        double ax = x2-x1;
+        double ay = y2-y1;
+        double bx = x3-x4;
+        double by = y3-y4;
+        double cx = x1-x3;
+        double cy = y1-y3;
 
-        float firstYMin = Math.min(startY, endY);
-        float secondYMin = Math.min(secondStartY, secondEndY);
-        float firstYMax = Math.max(startY, endY);
-        float secondYMax = Math.max(secondStartY, secondEndY);
-
-        float xSolution;
-        float usableSlope;
-        float usableIntercept;
-
-        float slope1 = (endY - startY) / (endX - startX);
-        float intercept1 = startY - slope1 * startX;
-
-        float slope2 = (secondEndY - secondStartY) / (secondEndX - secondStartX);
-        float intercept2 = secondStartY - slope2 * secondStartX;
-
-        if (endX - startX == 0) {
-            if (secondEndX - secondStartX == 0) {
-                if (endX == secondEndX) {
-                    return true;
-                }
+        double alphaNumerator = by*cx - bx*cy;
+        double commonDenominator = ay*bx - ax*by;
+        if (commonDenominator > 0){
+            if (alphaNumerator < 0 || alphaNumerator > commonDenominator){
                 return false;
             }
-            xSolution = startX;
-            usableSlope = slope2;
-            usableIntercept = intercept2;
-        } else if (secondEndX - secondStartX == 0) {
-            xSolution = secondStartX;
-            usableSlope = slope1;
-            usableIntercept = intercept1;
-        } else {
-
-            if (slope1 == slope2) {
-                if (intercept1 == intercept2) {
-                    return true;
-                }
+        }else if (commonDenominator < 0){
+            if (alphaNumerator > 0 || alphaNumerator < commonDenominator){
                 return false;
             }
-            xSolution = (intercept1 - intercept2) / (slope2 - slope1);
-
-            usableIntercept = intercept1;
-            usableSlope = slope1;
         }
-        float ySolution = xSolution * usableSlope + usableIntercept;
-
-        if (xSolution >= Math.max(firstXMin, secondXMin) && xSolution <= Math.min(firstXMax, secondXMax)) {
-            if (ySolution >= Math.max(firstYMin, secondYMin) && ySolution <= Math.min(firstYMax, secondYMax)) {
-                return true;
+        double betaNumerator = ax*cy - ay*cx;
+        if (commonDenominator > 0){
+            if (betaNumerator < 0 || betaNumerator > commonDenominator){
+                return false;
+            }
+        }else if (commonDenominator < 0){
+            if (betaNumerator > 0 || betaNumerator < commonDenominator){
+                return false;
             }
         }
-        return false;
+        if (commonDenominator == 0){
+            // This code wasn't in Franklin Antonio's method. It was added by Keith Woodward.
+            // The lines are parallel.
+            // Check if they're collinear.
+            double y3LessY1 = y3-y1;
+            double collinearityTestForP3 = x1*(y2-y3) + x2*(y3LessY1) + x3*(y1-y2);   // see http://mathworld.wolfram.com/Collinear.html
+            // If p3 is collinear with p1 and p2 then p4 will also be collinear, since p1-p2 is parallel with p3-p4
+            if (collinearityTestForP3 == 0){
+                // The lines are collinear. Now check if they overlap.
+                if (x1 >= x3 && x1 <= x4 || x1 <= x3 && x1 >= x4 ||
+                        x2 >= x3 && x2 <= x4 || x2 <= x3 && x2 >= x4 ||
+                        x3 >= x1 && x3 <= x2 || x3 <= x1 && x3 >= x2){
+                    if (y1 >= y3 && y1 <= y4 || y1 <= y3 && y1 >= y4 ||
+                            y2 >= y3 && y2 <= y4 || y2 <= y3 && y2 >= y4 ||
+                            y3 >= y1 && y3 <= y2 || y3 <= y1 && y3 >= y2){
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        return true;
     }
 
     public static boolean lineSegmentCrossesCircle(float startX, float startY, float endX, float endY,

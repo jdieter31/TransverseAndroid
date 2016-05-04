@@ -2,9 +2,6 @@ package com.provectusstudios.transverse;
 
 import android.opengl.GLES20;
 
-/**
- * Created by Justin on 8/16/2014.
- */
 public class SolidRenderType implements RenderType {
     private float red;
     private float green;
@@ -112,6 +109,18 @@ public class SolidRenderType implements RenderType {
     @Override
     public void setMatrix(float[] matrix) {
         this.matrix = matrix;
+    }
+
+    public float getRed() {
+        return red;
+    }
+
+    public float getBlue() {
+        return blue;
+    }
+
+    public float getGreen() {
+        return green;
     }
 
     public void setColor(float red, float green, float blue) {

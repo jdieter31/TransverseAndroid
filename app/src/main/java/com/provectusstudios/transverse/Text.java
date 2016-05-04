@@ -1,7 +1,5 @@
 package com.provectusstudios.transverse;
 
-import android.util.Log;
-
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -9,12 +7,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Created by Justin on 8/12/2014.
- */
 public class Text {
 
-    private static Map<String, Font> fonts = new HashMap<String, Font>();
+    private static Map<String, Font> fonts = new HashMap<>();
 
     private String text;
 
@@ -204,14 +199,12 @@ public class Text {
         public float heightOfString(String string, float fontSize) {
             char[] charArray = string.toCharArray();
             int nonScaledHeight = 0;
-            for (int i = 0; i < charArray.length; i++) {
-                char character = charArray[i];
+            for (char character : charArray) {
                 int indexOfChar = indexOfChar(character);
                 if (charHeights[indexOfChar] > nonScaledHeight) {
                     nonScaledHeight = charHeights[indexOfChar];
                 }
             }
-            Log.d("", "" + ((float) nonScaledHeight) * fontSize / ((float) baseFontSize));
             return ((float) nonScaledHeight) * fontSize / ((float) baseFontSize);
         }
 

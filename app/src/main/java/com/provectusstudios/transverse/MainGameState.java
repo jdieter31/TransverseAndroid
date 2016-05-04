@@ -2,23 +2,26 @@ package com.provectusstudios.transverse;
 
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
-import android.util.Log;
 import android.view.MotionEvent;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 public class MainGameState implements GameState {
 
+    //Prevent concurrency errors by changing this boolean rather than calling loss method
+    private boolean scheduledLoss = false;
+    private boolean scheduledRestart = false;
+
     private MainRenderer mainRenderer;
+
+    private SolidRenderType currentRenderer;
 
     private SolidRenderType lineRenderType;
     private SolidRenderType greyRenderType;
-    private SolidRenderType sectionRenderType;
     private SolidRenderType titleRenderType;
 
     private int leftPointer;
@@ -66,6 +69,15 @@ public class MainGameState implements GameState {
     private float lastRightY;
     private float lastVerticalChange;
 
+    private boolean animatingColorChange;
+    private long timeOfChange;
+    private SolidRenderType previousRenderType;
+    private SolidRenderType previousBackgroundRenderType;
+    private SolidRenderType mixRenderType;
+    private SolidRenderType mixBackgroundRenderType;
+
+    private SolidRenderType defaultBackgroundRenderer;
+
     private RenderType redRenderType;
     private boolean inLossMenu;
     private boolean animatingLoss;
@@ -73,6 +85,10 @@ public class MainGameState implements GameState {
     private RoundedRectangle loseScoreRectangle;
     private Text loseScoreNumberText;
     private Text loseScoreText;
+    private RoundedRectangle highScoreBox;
+    private Text highScoreText;
+    private RoundedRectangle retryRectangle;
+    private Text retryText;
 
     private Rectangle backgroundRectangle;
 
@@ -80,7 +96,7 @@ public class MainGameState implements GameState {
     private Rectangle centerDivider;
     private Rectangle rightWall;
 
-    private RenderType backgroundRenderType;
+    private SolidRenderType backgroundRenderType;
     private RenderType scoreRectangleRenderType;
 
     private Random random = new Random();
@@ -109,23 +125,21 @@ public class MainGameState implements GameState {
         lineRenderType = new SolidRenderType();
         lineRenderType.setAlpha(1);
         lineRenderType.setColor(.322f, .808f, 1f);
-        sectionRenderType = new SolidRenderType();
-        sectionRenderType.setAlpha(1);
-        sectionRenderType.setColor(.4f, .4f, .4f);
         verticalTranslate = new float[16];
         Matrix.setIdentityM(verticalTranslate, 0);
         leftPath.setWidth(20f);
         rightPath.setWidth(20f);
-        backgroundRenderType = new SolidRenderType();
-        ((SolidRenderType) backgroundRenderType).setColor(.95f, .95f, .95f);
+        defaultBackgroundRenderer = backgroundRenderType = new SolidRenderType();
+        backgroundRenderType.setColor(.95f, .95f, .95f);
         scoreRectangleRenderType = new SolidRenderType();
         ((SolidRenderType) scoreRectangleRenderType).setColor(1f,1f,1f);
         redRenderType = new SolidRenderType();
-        ((SolidRenderType) redRenderType).setColor(1f, .275f, .2f);
+        ((SolidRenderType) redRenderType).setColor(.95f, .24f, .24f);
         redRenderType.setAlpha(1f);
         titleRenderType = new SolidRenderType();
         titleRenderType.setColor(.204f, .553f, .686f);
         titleRenderType.setAlpha(1f);
+        currentRenderer = greyRenderType;
     }
 
     @Override
@@ -163,6 +177,11 @@ public class MainGameState implements GameState {
                         lastMoveCalc = System.currentTimeMillis();
                     }
                 }
+                if (inLossMenu) {
+                    if (retryRectangle.containsPoint(dpX, dpY)) {
+                        scheduledRestart = true;
+                    }
+                }
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP:
@@ -179,7 +198,8 @@ public class MainGameState implements GameState {
                     }
                 } else if (!inLossMenu) {
                     if (pointerID == leftPointer || pointerID == rightPointer) {
-                        handleLoss();
+                        //Use boolean to prevent concurrency errors
+                        scheduledLoss = true;
                     }
                 }
                 break;
@@ -208,9 +228,6 @@ public class MainGameState implements GameState {
         inLossMenu = true;
         animatingLoss = true;
         timeOfLoss = System.currentTimeMillis();
-        for (Section section : sectionsInView) {
-            section.setRenderType(redRenderType);
-        }
         loseScoreRectangle = new RoundedRectangle();
         loseScoreRectangle.setCenter(width/4, height/2, 0);
         loseScoreRectangle.setWidth(width / 3);
@@ -226,57 +243,92 @@ public class MainGameState implements GameState {
         loseScoreNumberText.refresh();
         loseScoreText = new Text();
         loseScoreText.setFont("FFF Forward");
-        loseScoreText.setText("POINTS");
+        loseScoreText.setText("Points");
         loseScoreText.setTextSize((2*height/3)/5);
         loseScoreText.setOrigin(width/4 - loseScoreText.getWidth()/2, height/2 + height / 8, 0);
         loseScoreText.refresh();
+        highScoreBox = new RoundedRectangle();
+        highScoreBox.setCenter(17*width/24, 4*height/15, 0);
+        highScoreBox.setCornerRadius(10f);
+        highScoreBox.setHeight(height/5);
+        highScoreBox.setWidth(3*width/7);
+        highScoreBox.setPrecision(60);
+        highScoreBox.refresh();
+        highScoreText = new Text();
+        highScoreText.setFont("FFF Forward");
+        highScoreText.setText("Best: 143");
+        highScoreText.setTextSize((2*height/3)/5);
+        highScoreText.setOrigin(17*width/24 - highScoreText.getWidth()/2, 4*height/15 - ((height/3)/5), 0);
+        highScoreText.refresh();
+        retryRectangle = new RoundedRectangle();
+        retryRectangle.setCenter(17*width/24, 11*height/15, 0);
+        retryRectangle.setCornerRadius(10f);
+        retryRectangle.setHeight(height/5);
+        retryRectangle.setWidth(3*width/7);
+        retryRectangle.setPrecision(60);
+        retryRectangle.refresh();
+        retryText = new Text();
+        retryText.setFont("FFF Forward");
+        retryText.setText("Restart");
+        retryText.setTextSize((2*height/3)/5);
+        retryText.setOrigin(17*width/24 - highScoreText.getWidth()/2, 11*height/15 - ((height/3)/5), 0);
+        retryText.refresh();
     }
 
     private void handleSectionTouch() {
+        //Read all position variables into stable variable so they don't change during computation
+        float leftXStable = leftX;
+        float leftYStable = leftY;
+        float rightXStable = rightX;
+        float rightYStable = rightY;
+
         boolean leftPast = false;
         Path.Point newLeftPoint = new Path.Point();
-        newLeftPoint.x = leftX;
-        newLeftPoint.y = leftY + verticalChange;
+
+        newLeftPoint.x = leftXStable;
+        newLeftPoint.y = leftYStable + verticalChange;
         leftPath.addTopPoint(newLeftPoint);
         if (wallsInView) {
-            if (leftWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftX, leftY + verticalChange)
-                    || rightWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftX, leftY + verticalChange)
-                    || centerDivider.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftX, leftY + verticalChange)) {
+            if (leftWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftXStable, leftYStable + verticalChange)
+                    || rightWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftXStable, leftYStable + verticalChange)
+                    || centerDivider.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftXStable, leftYStable + verticalChange)) {
                 handleLoss();
             }
         }
         for (Section section : sectionsInView) {
-            if (section.handleTouchMove(lastLeftX, leftX, lastLeftY + lastVerticalChange, leftY + verticalChange, false)) {
+            if (section.handleTouchMove(lastLeftX, leftXStable, lastLeftY + lastVerticalChange, leftYStable + verticalChange, false)) {
                 handleLoss();
             }
         }
-        if (leftY + verticalChange <= sectionToPass) {
+        if (leftYStable + verticalChange <= sectionToPass) {
             leftPast = true;
         }
+
+
         boolean rightPast = false;
         Path.Point newRightPoint = new Path.Point();
-        newRightPoint.x = rightX;
-        newRightPoint.y = rightY + verticalChange;
+        newRightPoint.x = rightXStable;
+        newRightPoint.y = rightYStable + verticalChange;
         rightPath.addTopPoint(newRightPoint);
         if (wallsInView) {
-            if (leftWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightX, rightY + verticalChange)
-                    || rightWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightX, rightY + verticalChange)
-                    || centerDivider.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightX, rightY + verticalChange)) {
+            if (leftWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)
+                    || rightWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)
+                    || centerDivider.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)) {
                 handleLoss();
             }
         }
         for (Section section : sectionsInView) {
-            if(section.handleTouchMove(lastRightX, rightX, lastRightY + lastVerticalChange, rightY + verticalChange, true)) {
+            if(section.handleTouchMove(lastRightX, rightXStable, lastRightY + lastVerticalChange, rightYStable + verticalChange, true)) {
                 handleLoss();
             }
         }
-        if (rightY + verticalChange <= sectionToPass) {
+        if (rightYStable + verticalChange <= sectionToPass) {
             rightPast = true;
         }
-        lastLeftX = leftX;
-        lastLeftY = leftY;
-        lastRightX = rightX;
-        lastRightY = rightY;
+        lastLeftX = leftXStable;
+        lastLeftY = leftYStable;
+        lastRightX = rightXStable;
+        lastRightY = rightYStable;
         lastVerticalChange = verticalChange;
         if (leftPast && rightPast) {
             score += 1;
@@ -363,33 +415,17 @@ public class MainGameState implements GameState {
             lastSpeedCalculation = time;
             return;
         }
-        speed += ((float) dt)*(1f/500f)*(1f + 7*Math.log1p(score/10f));
+        speed = 120 * ((float) Math.log(1 + score)) + 100;
         lastSpeedCalculation = time;
     }
 
     private Section getSection() {
-        GateSubSection subSection = new GateSubSection();
-        if (random.nextFloat() > .5f) {
-            subSection.setInverted(true);
-        }
-        Section section = new MirroredSection(subSection);
-        SolidRenderType sectionRenderType = new SolidRenderType();
-        float hue = random.nextFloat();
-        float luminance = random.nextFloat()*0.5f;
-        float saturation = random.nextFloat();
-        float q;
-        if (luminance < 0.5)
-            q = luminance * (1 + saturation);
-        else
-            q = (luminance + saturation) - (saturation * luminance);
+        Section section = new DoubleSection();
 
-        float p = 2 * luminance - q;
-        float red = Math.max(0, hueToRGB(p, q, hue + (1.0f / 3.0f)));
-        float green = Math.max(0, hueToRGB(p, q, hue));
-        float blue = Math.max(0, hueToRGB(p, q, hue - (1.0f / 3.0f)));
-        sectionRenderType.setColor(red, green, blue);
-        sectionRenderType.setAlpha(1);
-        section.setRenderType(sectionRenderType);
+        //Logistic function of score
+        float difficulty = 1f/(1 + (float) Math.pow(Math.E, -(score - 20)/10f));
+        section.setDifficulty(difficulty);
+
         return section;
     }
 
@@ -429,18 +465,70 @@ public class MainGameState implements GameState {
         }
     }
 
+    private void triggerRestart() {
+        scheduledRestart = false;
+        scheduledLoss = false;
+        inLossMenu = false;
+        started = false;
+        score = 0;
+        leftDown = false;
+        rightDown = false;
+        leftPath = new Path();
+        rightPath = new Path();
+        titleInView = true;
+        circlesInView = true;
+        wallsInView = true;
+        lastVerticalChange = 0;
+        verticalChange = 0;
+        titleAlpha = 1f;
+        lastTitleCalculation = -1;
+        sectionToPass = 0;
+        nextSectionToPass = 0;
+        endCurrentGenerate = 0;
+        currentRenderer = greyRenderType;
+        backgroundRenderType = defaultBackgroundRenderer;
+        Matrix.setIdentityM(verticalTranslate, 0);
+        sectionsInView = new ArrayList<>();
+        refreshDimensions(width, height, viewProjectionMatrix);
+    }
+
+
     @Override
     public void onDrawFrame() {
+        if (scheduledRestart) {
+            triggerRestart();
+        }
+        if (animatingColorChange) {
+            long dt = System.currentTimeMillis() - timeOfChange;
+            if (dt > 300) {
+                animatingColorChange = false;
+                dt = 300;
+            }
+            float red = ((300 - dt)/300f)*previousRenderType.getRed() + (dt/300f)*currentRenderer.getRed();
+            float blue = ((300 - dt)/300f)*previousRenderType.getBlue() + (dt/300f)*currentRenderer.getBlue();
+            float green = ((300 - dt)/300f)*previousRenderType.getGreen() + (dt/300f)*currentRenderer.getGreen();
+            mixRenderType.setColor(red, green, blue);
 
-        backgroundRenderType.setMatrix(viewProjectionMatrix);
-        backgroundRenderType.setAlpha(1);
-        backgroundRenderType.drawShape(backgroundRectangle);
+            red = ((300 - dt)/300f)*previousBackgroundRenderType.getRed() + (dt/300f)*backgroundRenderType.getRed();
+            blue = ((300 - dt)/300f)*previousBackgroundRenderType.getBlue() + (dt/300f)*backgroundRenderType.getBlue();
+            green = ((300 - dt)/300f)*previousBackgroundRenderType.getGreen() + (dt/300f)*backgroundRenderType.getGreen();
+            mixBackgroundRenderType.setColor(red, green, blue);
+
+            mixBackgroundRenderType.setMatrix(viewProjectionMatrix);
+            mixBackgroundRenderType.setAlpha(1);
+            mixBackgroundRenderType.drawShape(backgroundRectangle);
+        } else {
+            backgroundRenderType.setMatrix(viewProjectionMatrix);
+            backgroundRenderType.setAlpha(1);
+            backgroundRenderType.drawShape(backgroundRectangle);
+        }
         scoreRectangleRenderType.setMatrix(viewProjectionMatrix);
         scoreRectangleRenderType.setAlpha(1);
         titleRenderType.setMatrix(viewProjectionMatrix);
         if (!started) {
             greyRenderType.setMatrix(viewProjectionMatrix);
             lineRenderType.setMatrix(viewProjectionMatrix);
+            titleRenderType.setAlpha(1);
             greyRenderType.drawShape(leftWall);
             greyRenderType.drawShape(centerDivider);
             greyRenderType.drawShape(rightWall);
@@ -464,19 +552,20 @@ public class MainGameState implements GameState {
             redRenderType.setAlpha(1);
             float[] verticalTranslateMVP = new float[16];
             Matrix.multiplyMM(verticalTranslateMVP, 0, viewProjectionMatrix, 0, verticalTranslate, 0);
-            redRenderType.setMatrix(verticalTranslateMVP);
-            redRenderType.setAlpha(.8f);
+            greyRenderType.setMatrix(verticalTranslateMVP);
+            greyRenderType.setAlpha(1f);
             if (wallsInView) {
-                redRenderType.drawShape(leftWall);
-                redRenderType.drawShape(centerDivider);
-                redRenderType.drawShape(rightWall);
+                greyRenderType.drawShape(leftWall);
+                greyRenderType.drawShape(centerDivider);
+                greyRenderType.drawShape(rightWall);
             }
             for (Section section : sectionsInView) {
-                section.draw(verticalTranslateMVP);
+                section.draw(verticalTranslateMVP, greyRenderType);
             }
             redRenderType.setMatrix(viewProjectionMatrix);
             redRenderType.setAlpha(1f);
-            backgroundRenderType.setAlpha(1f);
+            defaultBackgroundRenderer.setAlpha(1f);
+            defaultBackgroundRenderer.setMatrix(viewProjectionMatrix);
             if (animatingLoss) {
                 long dt = System.currentTimeMillis() - timeOfLoss;
                 float alpha = dt*(1f/1000f);
@@ -485,26 +574,51 @@ public class MainGameState implements GameState {
                 }
                 redRenderType.setAlpha(alpha);
                 redRenderType.drawShape(loseScoreRectangle);
-                backgroundRenderType.drawText(loseScoreNumberText);
-                backgroundRenderType.drawText(loseScoreText);
+                redRenderType.drawShape(highScoreBox);
+                redRenderType.drawShape(retryRectangle);
+                defaultBackgroundRenderer.drawText(loseScoreNumberText);
+                defaultBackgroundRenderer.drawText(loseScoreText);
+                defaultBackgroundRenderer.drawText(highScoreText);
+                defaultBackgroundRenderer.drawText(retryText);
             } else {
                 redRenderType.drawShape(loseScoreRectangle);
-                backgroundRenderType.drawText(loseScoreNumberText);
-                backgroundRenderType.drawText(loseScoreText);
+                redRenderType.drawShape(highScoreBox);
+                redRenderType.drawShape(retryRectangle);
+                defaultBackgroundRenderer.drawText(loseScoreNumberText);
+                defaultBackgroundRenderer.drawText(loseScoreText);
+                defaultBackgroundRenderer.drawText(highScoreText);
+                defaultBackgroundRenderer.drawText(retryText);
             }
         } else {
+            if (scheduledLoss) {
+                handleLoss();
+            }
             calculateMove();
             adjustSpeed();
             generateSections();
             handleSectionTouch();
             float[] verticalTranslateMVP = new float[16];
             Matrix.multiplyMM(verticalTranslateMVP, 0, viewProjectionMatrix, 0, verticalTranslate, 0);
+            for (Section section : sectionsInView) {
+                if (animatingColorChange) {
+                    section.draw(verticalTranslateMVP, mixRenderType);
+                } else {
+                    section.draw(verticalTranslateMVP, currentRenderer);
+                }
+            }
             lineRenderType.setMatrix(verticalTranslateMVP);
             if (wallsInView) {
-                greyRenderType.setMatrix(verticalTranslateMVP);
-                greyRenderType.drawShape(leftWall);
-                greyRenderType.drawShape(centerDivider);
-                greyRenderType.drawShape(rightWall);
+                if (animatingColorChange) {
+                    mixRenderType.setMatrix(verticalTranslateMVP);
+                    mixRenderType.drawShape(leftWall);
+                    mixRenderType.drawShape(centerDivider);
+                    mixRenderType.drawShape(rightWall);
+                } else {
+                    currentRenderer.setMatrix(verticalTranslateMVP);
+                    currentRenderer.drawShape(leftWall);
+                    currentRenderer.drawShape(centerDivider);
+                    currentRenderer.drawShape(rightWall);
+                }
             }
             if (titleInView) {
                 long time = System.currentTimeMillis();
@@ -553,9 +667,6 @@ public class MainGameState implements GameState {
             lineRenderType.setMatrix(verticalTranslateMVP);
             lineRenderType.drawAlphaShape(leftPath);
             lineRenderType.drawAlphaShape(rightPath);
-            for (Section section : sectionsInView) {
-                section.draw(verticalTranslateMVP);
-            }
             greyRenderType.setMatrix(viewProjectionMatrix);
             greyRenderType.drawText(scoreText);
         }
@@ -644,9 +755,55 @@ public class MainGameState implements GameState {
     }
 
     private void refreshScore() {
+
         scoreText.setText(score + "");
         scoreText.setOrigin(width - 25 - scoreText.getWidth(), 3, 0);
         scoreText.refresh();
+        if (score != 0) {
+            SolidRenderType renderType = new SolidRenderType();
+            float hue = random.nextFloat();
+            float luminance = random.nextFloat() * .5f;
+            float saturation = random.nextFloat();
+            float q;
+            if (luminance < 0.5)
+                q = luminance * (1 + saturation);
+            else
+                q = (luminance + saturation) - (saturation * luminance);
+
+            float p = 2 * luminance - q;
+            float red = Math.max(0, hueToRGB(p, q, hue + (1.0f / 3.0f)));
+            float green = Math.max(0, hueToRGB(p, q, hue));
+            float blue = Math.max(0, hueToRGB(p, q, hue - (1.0f / 3.0f)));
+            renderType.setColor(red, green, blue);
+            renderType.setAlpha(1);
+            previousRenderType = currentRenderer;
+            currentRenderer = renderType;
+
+            SolidRenderType backgroundRenderer = new SolidRenderType();
+            luminance = .9f;
+            saturation = .1f;
+
+            q = (luminance + saturation) - (saturation * luminance);
+
+            p = 2 * luminance - q;
+            red = Math.max(0, hueToRGB(p, q, hue + (1.0f / 3.0f)));
+            green = Math.max(0, hueToRGB(p, q, hue));
+            blue = Math.max(0, hueToRGB(p, q, hue - (1.0f / 3.0f)));
+            backgroundRenderer.setColor(red, green, blue);
+            backgroundRenderer.setAlpha(1);
+            previousBackgroundRenderType = backgroundRenderer;
+            backgroundRenderType = backgroundRenderer;
+
+            mixRenderType = new SolidRenderType();
+            mixRenderType.setAlpha(1);
+            mixRenderType.setColor(previousRenderType.getRed(), previousRenderType.getGreen(), previousRenderType.getBlue());
+
+            mixBackgroundRenderType = new SolidRenderType();
+            mixBackgroundRenderType.setAlpha(1);
+            mixBackgroundRenderType.setColor(previousBackgroundRenderType.getRed(), previousBackgroundRenderType.getGreen(), previousBackgroundRenderType.getBlue());
+            animatingColorChange = true;
+            timeOfChange = System.currentTimeMillis();
+        }
     }
 
 }

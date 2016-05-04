@@ -6,9 +6,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
-/**
- * Created by Justin on 8/9/2014.
- */
 public class Circle implements Shape {
     private float radius;
     private float centerX;
@@ -106,16 +103,10 @@ public class Circle implements Shape {
     public boolean containsPoint(float x, float y) {
         float dx = x - centerX;
         float dy = y - centerY;
-        if (Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2)) <= radius) {
-            return true;
-        }
-        return false;
+        return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2)) <= radius;
     }
 
     public boolean lineSegmentCrosses(float startX, float startY, float endX, float endY) {
-        if (UtilityMath.lineSegmentCrossesCircle(startX, startY, endX, endY, centerX, centerY, radius)) {
-            return true;
-        }
-        return false;
+        return UtilityMath.lineSegmentCrossesCircle(startX, startY, endX, endY, centerX, centerY, radius);
     }
 }

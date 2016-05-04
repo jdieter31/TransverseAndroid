@@ -2,19 +2,15 @@ package com.provectusstudios.transverse;
 
 import java.util.Random;
 
-/**
- * Created by Justin on 10/5/2014.
- */
-public class MirroredSection implements Section {
-    private RenderType renderType;
+public class DoubleSection implements Section {
     private float length;
 
     private Rectangle centerDivider;
     private Rectangle rightWall;
     private Rectangle leftWall;
 
-    private SubSection section;
-    private SubSection mirroredSection;
+    private SubSection section1;
+    private SubSection section2;
 
     private float startX;
     private float width;
@@ -25,18 +21,16 @@ public class MirroredSection implements Section {
     private Rectangle firstRightGateLeft;
     private Rectangle firstRightGateRight;
 
-    public MirroredSection(SubSection sectionToMirror) {
-        section = sectionToMirror;
-    }
+    private float difficulty;
 
     @Override
-    public void draw(float[] matrix) {
+    public void draw(float[] matrix, RenderType renderType) {
         renderType.setMatrix(matrix);
         renderType.drawShape(centerDivider);
         renderType.drawShape(leftWall);
         renderType.drawShape(rightWall);
-        section.draw(renderType);
-        mirroredSection.draw(renderType);
+        section1.draw(renderType);
+        section2.draw(renderType);
         renderType.drawShape(firstLeftGateLeft);
         renderType.drawShape(firstLeftGateRight);
         renderType.drawShape(firstRightGateLeft);
@@ -48,8 +42,8 @@ public class MirroredSection implements Section {
         leftWall.refresh();
         rightWall.refresh();
         centerDivider.refresh();
-        section.refresh();
-        mirroredSection.refresh();
+        section1.refresh();
+        section2.refresh();
         firstLeftGateLeft.refresh();
         firstLeftGateRight.refresh();
         firstRightGateLeft.refresh();
@@ -68,11 +62,11 @@ public class MirroredSection implements Section {
             return true;
         }
         if (rightSide) {
-            if (mirroredSection.handleTouchMove(startX, endX, startY, endY)) {
+            if (section2.handleTouchMove(startX, endX, startY, endY)) {
                 return true;
             }
         } else {
-            if (section.handleTouchMove(startX, endX, startY, endY)) {
+            if (section1.handleTouchMove(startX, endX, startY, endY)) {
                 return true;
             }
         }
@@ -81,7 +75,7 @@ public class MirroredSection implements Section {
 
     @Override
     public void setDifficulty(float difficulty) {
-
+        this.difficulty = difficulty;
     }
 
     @Override
@@ -89,11 +83,23 @@ public class MirroredSection implements Section {
         this.startX = startX;
         this.width = width;
         this.startY = startY;
-        section.generate(random, (width-45)/2, startX + 15, startY);
-        length = section.getLength();
-        mirroredSection = section.copy();
-        section.flip();
-        mirroredSection.setOrigin(startX + 30 + (width-45)/2, startY);
+        section1 = getSubSection(random);
+        section1.setDifficulty(difficulty);
+        section1.generate(random, (width-45)/2, startX + 15, startY);
+        length = section1.getLength();
+
+        if (random.nextFloat() < .7 - .5 * difficulty) {
+            section2 = section1.copy();
+            if (random.nextFloat() < .5) {
+                section1.flip();
+            }
+            section2.setOrigin(startX + 30 + (width-45)/2, startY);
+        } else {
+            section2 = getSubSection(random);
+            section2.setDifficulty(difficulty);
+            section2.generate(random, (width-45)/2, startX + 30 + (width-45)/2, startY, section1.getLength());
+        }
+
         centerDivider = new Rectangle();
         centerDivider.setOrigin(startX + 15 + (width-45)/2, startY - length, 0);
         centerDivider.setWidth(15);
@@ -122,6 +128,15 @@ public class MirroredSection implements Section {
         firstRightGateRight.setOrigin(30 + 7*(width-45)/8, startY - 15, 0);
         firstRightGateRight.setHeight(15);
         firstRightGateRight.setWidth((width - 45)/8);
+
+    }
+
+    private SubSection getSubSection(Random random) {
+        GateSubSection subSection = new GateSubSection();
+        if (random.nextFloat() > .5f) {
+            subSection.setInverted(true);
+        }
+        return subSection;
     }
 
     @Override
@@ -142,11 +157,6 @@ public class MirroredSection implements Section {
     @Override
     public float getLength() {
         return length;
-    }
-
-    @Override
-    public void setRenderType(RenderType renderType) {
-        this.renderType = renderType;
     }
 
     @Override
