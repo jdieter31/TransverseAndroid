@@ -197,6 +197,12 @@ public class GateSubSection implements SubSection {
         this.startY = startY;
     }
 
+    @Override
+    //Empties the List of gates
+    public void empty() {
+        gates = new ArrayList<>();
+    }
+
     private void setGates(List<Gate> newGates) {
         gates = newGates;
     }

@@ -1,7 +1,11 @@
 package com.provectusstudios.transverse;
 
+import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
+import android.util.Log;
 import android.view.MotionEvent;
 
 import java.util.ArrayList;
@@ -23,6 +27,8 @@ public class MainGameState implements GameState {
     private SolidRenderType lineRenderType;
     private SolidRenderType greyRenderType;
     private SolidRenderType titleRenderType;
+
+    private int highScore = 0;
 
     private int leftPointer;
     private int rightPointer;
@@ -69,6 +75,25 @@ public class MainGameState implements GameState {
     private float lastRightY;
     private float lastVerticalChange;
 
+    private boolean hadSecondChance = false;
+    private boolean inSecondChanceMenu = false;
+
+    private boolean startingSecondChance = false;
+    private RoundedRectangle startingSecondChanceRectangle;
+    private Text secondChanceTapAndHoldText;
+    private Text toRetryText;
+    private Circle leftSecondChanceCircle;
+    private Circle rightSecondChanceCircle;
+
+    private RoundedRectangle secondChanceBox;
+    private RoundedRectangle endGameButton;
+    private Text endText;
+    private Text gameText;
+    private RoundedRectangle secondChanceButton;
+    private Text secondChanceText;
+    private Text watchVideoText;
+    private SolidRenderType lightRedRenderType;
+
     private boolean animatingColorChange;
     private long timeOfChange;
     private SolidRenderType previousRenderType;
@@ -77,6 +102,8 @@ public class MainGameState implements GameState {
     private SolidRenderType mixBackgroundRenderType;
 
     private SolidRenderType defaultBackgroundRenderer;
+
+    private Section currentSection;
 
     private RenderType redRenderType;
     private boolean inLossMenu;
@@ -119,6 +146,7 @@ public class MainGameState implements GameState {
 
     public MainGameState(MainRenderer mainRenderer) {
         this.mainRenderer = mainRenderer;
+        readHighScore();
         greyRenderType = new SolidRenderType();
         greyRenderType.setAlpha(1);
         greyRenderType.setColor(.4f, .4f, .4f);
@@ -134,12 +162,20 @@ public class MainGameState implements GameState {
         scoreRectangleRenderType = new SolidRenderType();
         ((SolidRenderType) scoreRectangleRenderType).setColor(1f,1f,1f);
         redRenderType = new SolidRenderType();
-        ((SolidRenderType) redRenderType).setColor(.95f, .24f, .24f);
+        ((SolidRenderType) redRenderType).setColor(1f, .3f, .3f);
         redRenderType.setAlpha(1f);
+        lightRedRenderType = new SolidRenderType();
+        lightRedRenderType.setColor(.784f, .137f, .263f);
+        lightRedRenderType.setAlpha(1f);
         titleRenderType = new SolidRenderType();
         titleRenderType.setColor(.204f, .553f, .686f);
         titleRenderType.setAlpha(1f);
         currentRenderer = greyRenderType;
+    }
+
+    private void readHighScore() {
+        SharedPreferences pref = ((Activity) mainRenderer.getContext()).getPreferences(Context.MODE_PRIVATE);
+        highScore = pref.getInt(mainRenderer.getContext().getString(R.string.saved_high_score), 0);
     }
 
     @Override
@@ -177,9 +213,43 @@ public class MainGameState implements GameState {
                         lastMoveCalc = System.currentTimeMillis();
                     }
                 }
+                if (startingSecondChance) {
+                    if (!rightDown && rightSecondChanceCircle.containsPoint(dpX, dpY + verticalChange)) {
+                        rightDown = true;
+                        rightPointer = pointerID;
+                        rightX = dpX;
+                        rightY = dpY;
+                        lastRightX = rightX;
+                        lastRightY = rightY;
+                    }
+                    if (!leftDown && leftSecondChanceCircle.containsPoint(dpX, dpY + verticalChange)) {
+                        leftX = dpX;
+                        leftY = dpY;
+                        lastLeftX = leftX;
+                        lastLeftY = leftY;
+                        leftDown = true;
+                        leftPointer = pointerID;
+                    }
+                    if (rightDown && leftDown) {
+                        leftPath = new Path();
+                        rightPath = new Path();
+                        startingSecondChance = false;
+                        scheduledLoss = false;
+                        started = true;
+                        lastMoveCalc = System.currentTimeMillis();
+                    }
+                }
                 if (inLossMenu) {
                     if (retryRectangle.containsPoint(dpX, dpY)) {
                         scheduledRestart = true;
+                    }
+                }
+                if (inSecondChanceMenu) {
+                    if (endGameButton.containsPoint(dpX, dpY)) {
+                        inSecondChanceMenu = false;
+                        finishGame();
+                    } else if (secondChanceButton.containsPoint(dpX, dpY)) {
+                        createSecondChance();
                     }
                 }
                 break;
@@ -188,6 +258,15 @@ public class MainGameState implements GameState {
                 pointerIndex = MotionEventCompat.getActionIndex(event);
                 pointerID = MotionEventCompat.getPointerId(event, pointerIndex);
                 if (!started) {
+                    if (rightDown && pointerID == rightPointer) {
+                        rightDown = false;
+                        rightPointer = 0;
+                    }
+                    if (leftDown && pointerID == leftPointer) {
+                        leftDown = false;
+                        leftPointer = 0;
+                    }
+                } else if (startingSecondChance) {
                     if (rightDown && pointerID == rightPointer) {
                         rightDown = false;
                         rightPointer = 0;
@@ -224,7 +303,131 @@ public class MainGameState implements GameState {
         }
     }
 
+    private void updateHighScore(int score) {
+        highScore = score;
+        SharedPreferences pref = ((Activity) mainRenderer.getContext()).getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences.Editor edit = pref.edit();
+        edit.putInt(mainRenderer.getContext().getString(R.string.saved_high_score), highScore);
+        edit.commit();
+    }
+
     private void handleLoss() {
+        if (!hadSecondChance) {
+            createSecondChanceMenu();
+        } else {
+            finishGame();
+        }
+    }
+
+    private void createSecondChance() {
+
+        if (currentSection != null) {
+            currentSection.empty();
+        }
+        inSecondChanceMenu = false;
+        hadSecondChance = true;
+        startingSecondChance = true;
+        rightDown = false;
+        leftDown = false;
+        leftPath = new Path();
+        rightPath = new Path();
+
+        leftSecondChanceCircle = new Circle();
+        leftSecondChanceCircle.setPrecision(360);
+        leftSecondChanceCircle.setRadius(height/10);
+        rightSecondChanceCircle = new Circle();
+        rightSecondChanceCircle.setPrecision(360);
+        rightSecondChanceCircle.setRadius(height/10);
+        leftSecondChanceCircle.setCenter(width/4, height/2 + verticalChange, 0);
+        rightSecondChanceCircle.setCenter(3*width/4, height/2 + verticalChange, 0);
+        leftSecondChanceCircle.refresh();
+        rightSecondChanceCircle.refresh();
+
+        startingSecondChanceRectangle = new RoundedRectangle();
+        startingSecondChanceRectangle.setWidth(2*width/3);
+        startingSecondChanceRectangle.setCenter(width/2, height/2 + verticalChange, 0);
+        startingSecondChanceRectangle.setHeight(height/4);
+        startingSecondChanceRectangle.setCornerRadius(10f);
+        startingSecondChanceRectangle.setPrecision(60);
+        startingSecondChanceRectangle.refresh();
+        secondChanceTapAndHoldText = new Text();
+        secondChanceTapAndHoldText.setFont("FFF Forward");
+        secondChanceTapAndHoldText.setText("Tap and hold");
+        secondChanceTapAndHoldText.setTextSize((height/4)/3);
+        secondChanceTapAndHoldText.setOrigin(width/2 - secondChanceTapAndHoldText.getWidth()/2, height/2 - (height/4)/3 + verticalChange, 0);
+        secondChanceTapAndHoldText.refresh();
+        toRetryText = new Text();
+        toRetryText.setFont("FFF Forward");
+        toRetryText.setText("to continue!");
+        toRetryText.setTextSize((height/4)/3);
+        toRetryText.setOrigin(width/2 - toRetryText.getWidth()/2, height/2 + verticalChange, 0);
+        toRetryText.refresh();
+    }
+
+
+    private void createSecondChanceMenu() {
+        hadSecondChance = true;
+        inSecondChanceMenu = true;
+
+        secondChanceBox = new RoundedRectangle();
+        secondChanceBox.setWidth(2*width/3);
+        secondChanceBox.setCenter(width/2, height/2, 0);
+        secondChanceBox.setHeight(height/3);
+        secondChanceBox.setCornerRadius(10f);
+        secondChanceBox.setPrecision(60);
+        secondChanceBox.refresh();
+
+        endGameButton = new RoundedRectangle();
+        endGameButton.setWidth(2 * width / 9);
+        endGameButton.setCenter(width/2 - width/3 + width/9 + width/36, height/2, 0);
+        endGameButton.setHeight(height/4);
+        endGameButton.setCornerRadius(10f);
+        endGameButton.setPrecision(60);
+        endGameButton.refresh();
+
+        endText = new Text();
+        endText.setFont("FFF Forward");
+        endText.setText("End");
+        endText.setTextSize(height/10);
+        endText.setOrigin(width/2 - width/3 + width/9 + width/36 - endText.getWidth()/2, height/2 - height/90 - height/10, 0);
+        endText.refresh();
+
+        gameText = new Text();
+        gameText.setFont("FFF Forward");
+        gameText.setText("Game");
+        gameText.setTextSize(height/10);
+        gameText.setOrigin(width/2 - width/3 + width/9 + width/36 - gameText.getWidth()/2 ,height/2 + height/90, 0);
+        gameText.refresh();
+
+        secondChanceButton = new RoundedRectangle();
+        secondChanceButton.setWidth(13 * width / 36);
+        secondChanceButton.setCenter(width/2 - width/3 + width/36 + 2*width/9 + width/36 + 13 * width / 72, height/2, 0);
+        secondChanceButton.setHeight(height/4);
+        secondChanceButton.setCornerRadius(10f);
+        secondChanceButton.setPrecision(60);
+        secondChanceButton.refresh();
+
+        secondChanceText = new Text();
+        secondChanceText.setFont("FFF Forward");
+        secondChanceText.setText("Second Chance");
+        secondChanceText.setTextSize(height/12);
+        secondChanceText.setOrigin(width/2 - width/3 + width/36 + 2*width/9 + width/36 + 13 * width / 72 - secondChanceText.getWidth()/2, height/2 - height/90 - height/12, 0);
+        secondChanceText.refresh();
+
+        watchVideoText = new Text();
+        watchVideoText.setFont("FFF Forward");
+        watchVideoText.setText("Watch Video");
+        watchVideoText.setTextSize(height/12);
+        watchVideoText.setOrigin(width/2 - width/3 + width/36 + 2*width/9 + width/36 + 13 * width / 72 - watchVideoText.getWidth()/2, height/2 + height/90, 0);
+        watchVideoText.refresh();
+    }
+
+
+
+    private void finishGame() {
+        if (score > highScore) {
+            updateHighScore(score);
+        }
         inLossMenu = true;
         animatingLoss = true;
         timeOfLoss = System.currentTimeMillis();
@@ -256,7 +459,7 @@ public class MainGameState implements GameState {
         highScoreBox.refresh();
         highScoreText = new Text();
         highScoreText.setFont("FFF Forward");
-        highScoreText.setText("Best: 143");
+        highScoreText.setText("Best: " + highScore);
         highScoreText.setTextSize((2*height/3)/5);
         highScoreText.setOrigin(17*width/24 - highScoreText.getWidth()/2, 4*height/15 - ((height/3)/5), 0);
         highScoreText.refresh();
@@ -292,12 +495,16 @@ public class MainGameState implements GameState {
             if (leftWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftXStable, leftYStable + verticalChange)
                     || rightWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftXStable, leftYStable + verticalChange)
                     || centerDivider.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftXStable, leftYStable + verticalChange)) {
-                handleLoss();
+                if (!scheduledLoss && !inSecondChanceMenu) {
+                    handleLoss();
+                }
             }
         }
         for (Section section : sectionsInView) {
             if (section.handleTouchMove(lastLeftX, leftXStable, lastLeftY + lastVerticalChange, leftYStable + verticalChange, false)) {
-                handleLoss();
+                if (!scheduledLoss && !inSecondChanceMenu) {
+                    handleLoss();
+                }
             }
         }
         if (leftYStable + verticalChange <= sectionToPass) {
@@ -314,12 +521,16 @@ public class MainGameState implements GameState {
             if (leftWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)
                     || rightWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)
                     || centerDivider.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)) {
-                handleLoss();
+                if (!scheduledLoss && !inSecondChanceMenu) {
+                    handleLoss();
+                }
             }
         }
         for (Section section : sectionsInView) {
             if(section.handleTouchMove(lastRightX, rightXStable, lastRightY + lastVerticalChange, rightYStable + verticalChange, true)) {
-                handleLoss();
+                if (!scheduledLoss && !inSecondChanceMenu) {
+                    handleLoss();
+                }
             }
         }
         if (rightYStable + verticalChange <= sectionToPass) {
@@ -333,6 +544,11 @@ public class MainGameState implements GameState {
         if (leftPast && rightPast) {
             score += 1;
             refreshScore();
+            if (currentSection != null) {
+                currentSection = sectionsInView.get(sectionsInView.indexOf(currentSection) + 1);
+            } else {
+                currentSection = sectionsInView.get(0);
+            }
             sectionToPass = nextSectionToPass;
         }
         int pointsToRemove = 0;
@@ -466,6 +682,8 @@ public class MainGameState implements GameState {
     }
 
     private void triggerRestart() {
+        hadSecondChance = false;
+        inSecondChanceMenu = false;
         scheduledRestart = false;
         scheduledLoss = false;
         inLossMenu = false;
@@ -478,6 +696,7 @@ public class MainGameState implements GameState {
         titleInView = true;
         circlesInView = true;
         wallsInView = true;
+        currentSection = null;
         lastVerticalChange = 0;
         verticalChange = 0;
         titleAlpha = 1f;
@@ -548,46 +767,92 @@ public class MainGameState implements GameState {
             } else {
                 greyRenderType.drawShape(rightCircle);
             }
-        } else if (inLossMenu) {
+        } else if (inLossMenu || inSecondChanceMenu) {
             redRenderType.setAlpha(1);
             float[] verticalTranslateMVP = new float[16];
             Matrix.multiplyMM(verticalTranslateMVP, 0, viewProjectionMatrix, 0, verticalTranslate, 0);
-            greyRenderType.setMatrix(verticalTranslateMVP);
-            greyRenderType.setAlpha(1f);
+            currentRenderer.setMatrix(verticalTranslateMVP);
+            currentRenderer.setAlpha(1f);
             if (wallsInView) {
-                greyRenderType.drawShape(leftWall);
-                greyRenderType.drawShape(centerDivider);
-                greyRenderType.drawShape(rightWall);
+                currentRenderer.drawShape(leftWall);
+                currentRenderer.drawShape(centerDivider);
+                currentRenderer.drawShape(rightWall);
             }
             for (Section section : sectionsInView) {
-                section.draw(verticalTranslateMVP, greyRenderType);
+                section.draw(verticalTranslateMVP, currentRenderer);
             }
             redRenderType.setMatrix(viewProjectionMatrix);
             redRenderType.setAlpha(1f);
             defaultBackgroundRenderer.setAlpha(1f);
             defaultBackgroundRenderer.setMatrix(viewProjectionMatrix);
-            if (animatingLoss) {
-                long dt = System.currentTimeMillis() - timeOfLoss;
-                float alpha = dt*(1f/1000f);
-                if (alpha > 1) {
-                    animatingLoss = false;
+            lightRedRenderType.setMatrix(viewProjectionMatrix);
+            lightRedRenderType.setAlpha(1f);
+            if (inLossMenu) {
+                if (animatingLoss) {
+                    long dt = System.currentTimeMillis() - timeOfLoss;
+                    float alpha = dt*(1f/1000f);
+                    if (alpha > 1) {
+                        animatingLoss = false;
+                    }
+                    redRenderType.setAlpha(alpha);
+                    redRenderType.drawShape(loseScoreRectangle);
+                    redRenderType.drawShape(highScoreBox);
+                    redRenderType.drawShape(retryRectangle);
+                    defaultBackgroundRenderer.drawText(loseScoreNumberText);
+                    defaultBackgroundRenderer.drawText(loseScoreText);
+                    defaultBackgroundRenderer.drawText(highScoreText);
+                    defaultBackgroundRenderer.drawText(retryText);
+                } else {
+                    redRenderType.drawShape(loseScoreRectangle);
+                    redRenderType.drawShape(highScoreBox);
+                    redRenderType.drawShape(retryRectangle);
+                    defaultBackgroundRenderer.drawText(loseScoreNumberText);
+                    defaultBackgroundRenderer.drawText(loseScoreText);
+                    defaultBackgroundRenderer.drawText(highScoreText);
+                    defaultBackgroundRenderer.drawText(retryText);
                 }
-                redRenderType.setAlpha(alpha);
-                redRenderType.drawShape(loseScoreRectangle);
-                redRenderType.drawShape(highScoreBox);
-                redRenderType.drawShape(retryRectangle);
-                defaultBackgroundRenderer.drawText(loseScoreNumberText);
-                defaultBackgroundRenderer.drawText(loseScoreText);
-                defaultBackgroundRenderer.drawText(highScoreText);
-                defaultBackgroundRenderer.drawText(retryText);
+            }
+
+            if (inSecondChanceMenu) {
+                redRenderType.drawShape(secondChanceBox);
+                lightRedRenderType.drawShape(endGameButton);
+                lightRedRenderType.drawShape(secondChanceButton);
+                defaultBackgroundRenderer.drawText(gameText);
+                defaultBackgroundRenderer.drawText(endText);
+                defaultBackgroundRenderer.drawText(secondChanceText);
+                defaultBackgroundRenderer.drawText(watchVideoText);
+            }
+        } else if (startingSecondChance) {
+            float[] verticalTranslateMVP = new float[16];
+            Matrix.multiplyMM(verticalTranslateMVP, 0, viewProjectionMatrix, 0, verticalTranslate, 0);
+            greyRenderType.setAlpha(1);
+            currentRenderer.setAlpha(1);
+            titleRenderType.setAlpha(1);
+            titleRenderType.setMatrix(verticalTranslateMVP);
+            greyRenderType.setMatrix(verticalTranslateMVP);
+            currentRenderer.setMatrix(verticalTranslateMVP);
+            defaultBackgroundRenderer.setMatrix(verticalTranslateMVP);
+            if (wallsInView) {
+                currentRenderer.drawShape(leftWall);
+                currentRenderer.drawShape(centerDivider);
+                currentRenderer.drawShape(rightWall);
+            }
+            for (Section section : sectionsInView) {
+                section.draw(verticalTranslateMVP, currentRenderer);
+            }
+            titleRenderType.drawShape(startingSecondChanceRectangle);
+            defaultBackgroundRenderer.drawText(secondChanceTapAndHoldText);
+            defaultBackgroundRenderer.drawText(toRetryText);
+
+            if (leftDown) {
+                lineRenderType.drawShape(leftSecondChanceCircle);
             } else {
-                redRenderType.drawShape(loseScoreRectangle);
-                redRenderType.drawShape(highScoreBox);
-                redRenderType.drawShape(retryRectangle);
-                defaultBackgroundRenderer.drawText(loseScoreNumberText);
-                defaultBackgroundRenderer.drawText(loseScoreText);
-                defaultBackgroundRenderer.drawText(highScoreText);
-                defaultBackgroundRenderer.drawText(retryText);
+                greyRenderType.drawShape(leftSecondChanceCircle);
+            }
+            if (rightDown) {
+                lineRenderType.drawShape(rightSecondChanceCircle);
+            } else {
+                greyRenderType.drawShape(rightSecondChanceCircle);
             }
         } else {
             if (scheduledLoss) {
@@ -646,11 +911,11 @@ public class MainGameState implements GameState {
                     titleRenderType.setAlpha(titleAlpha);
                     titleRenderType.drawShape(titleRectangle);
                     titleRenderType.drawShape(tapToStartRectangle);
-                    backgroundRenderType.setAlpha(titleAlpha);
-                    backgroundRenderType.drawText(titleText);
-                    backgroundRenderType.drawText(tapAndHoldText);
-                    backgroundRenderType.drawText(toStartText);
-                    backgroundRenderType.setAlpha(1f);
+                    defaultBackgroundRenderer.setAlpha(titleAlpha);
+                    defaultBackgroundRenderer.drawText(titleText);
+                    defaultBackgroundRenderer.drawText(tapAndHoldText);
+                    defaultBackgroundRenderer.drawText(toStartText);
+                    defaultBackgroundRenderer.setAlpha(1f);
                     if (!titleInView) {
                         titleRectangle = null;
                         titleText = null;

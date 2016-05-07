@@ -51,6 +51,12 @@ public class DoubleSection implements Section {
     }
 
     @Override
+    public void empty() {
+        section1.empty();
+        section2.empty();
+    }
+
+    @Override
     public boolean handleTouchMove(float startX, float endX, float startY, float endY, boolean rightSide) {
         if (firstLeftGateLeft.lineSegmentCrosses(startX, startY, endX, endY)
                 || firstLeftGateRight.lineSegmentCrosses(startX, startY, endX, endY)

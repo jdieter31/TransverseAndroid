@@ -13,4 +13,5 @@ public interface SubSection {
     SubSection copy();
     void flip();
     void setOrigin(float startX, float startY);
+    void empty();
 }
