@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
-import android.util.Log;
 import android.view.MotionEvent;
 
 import java.util.ArrayList;
@@ -92,7 +91,7 @@ public class MainGameState implements GameState {
     private RoundedRectangle secondChanceButton;
     private Text secondChanceText;
     private Text watchVideoText;
-    private SolidRenderType lightRedRenderType;
+    private SolidRenderType darkRedRenderType;
 
     private boolean animatingColorChange;
     private long timeOfChange;
@@ -144,6 +143,28 @@ public class MainGameState implements GameState {
     private float sectionToPass = 0;
     private float nextSectionToPass = 0;
 
+    private RoundedRectangle titleHighScoreBox;
+    private Text titleHighScoreText;
+
+    private RoundedRectangle leaderboardBox;
+    private Image leaderboardImage;
+
+    private RoundedRectangle achievementBox;
+    private Image achievementImage;
+
+    private boolean purchasedSecondChance = false;
+
+    private RoundedRectangle purchaseSecondChanceBox;
+    private Text buyNoAdsAndText;
+    private Text secondChancesText;
+
+    private RoundedRectangle loseAchievementBox;
+    private Image loseAchievementImage;
+    private RoundedRectangle loseLeaderboardBox;
+    private Image loseLeaderboardImage;
+    private RoundedRectangle loseShareBox;
+    private Text shareText;
+
     public MainGameState(MainRenderer mainRenderer) {
         this.mainRenderer = mainRenderer;
         readHighScore();
@@ -164,9 +185,9 @@ public class MainGameState implements GameState {
         redRenderType = new SolidRenderType();
         ((SolidRenderType) redRenderType).setColor(1f, .3f, .3f);
         redRenderType.setAlpha(1f);
-        lightRedRenderType = new SolidRenderType();
-        lightRedRenderType.setColor(.784f, .137f, .263f);
-        lightRedRenderType.setAlpha(1f);
+        darkRedRenderType = new SolidRenderType();
+        darkRedRenderType.setColor(.784f, .137f, .263f);
+        darkRedRenderType.setAlpha(1f);
         titleRenderType = new SolidRenderType();
         titleRenderType.setColor(.204f, .553f, .686f);
         titleRenderType.setAlpha(1f);
@@ -389,14 +410,14 @@ public class MainGameState implements GameState {
         endText.setFont("FFF Forward");
         endText.setText("End");
         endText.setTextSize(height/10);
-        endText.setOrigin(width/2 - width/3 + width/9 + width/36 - endText.getWidth()/2, height/2 - height/90 - height/10, 0);
+        endText.setOrigin(width/2 - width/3 + width/9 + width/36 - endText.getWidth()/2, height/2 - height/10, 0);
         endText.refresh();
 
         gameText = new Text();
         gameText.setFont("FFF Forward");
         gameText.setText("Game");
         gameText.setTextSize(height/10);
-        gameText.setOrigin(width/2 - width/3 + width/9 + width/36 - gameText.getWidth()/2 ,height/2 + height/90, 0);
+        gameText.setOrigin(width/2 - width/3 + width/9 + width/36 - gameText.getWidth()/2 ,height/2, 0);
         gameText.refresh();
 
         secondChanceButton = new RoundedRectangle();
@@ -411,15 +432,20 @@ public class MainGameState implements GameState {
         secondChanceText.setFont("FFF Forward");
         secondChanceText.setText("Second Chance");
         secondChanceText.setTextSize(height/12);
-        secondChanceText.setOrigin(width/2 - width/3 + width/36 + 2*width/9 + width/36 + 13 * width / 72 - secondChanceText.getWidth()/2, height/2 - height/90 - height/12, 0);
+        if (purchasedSecondChance) {
+            secondChanceText.setOrigin(width/2 - width/3 + width/36 + 2*width/9 + width/36 + 13 * width / 72 - secondChanceText.getWidth()/2, height/2 - height/24, 0);
+        } else {
+            secondChanceText.setOrigin(width / 2 - width / 3 + width / 36 + 2 * width / 9 + width / 36 + 13 * width / 72 - secondChanceText.getWidth() / 2, height / 2 - height / 12, 0);
+        }
         secondChanceText.refresh();
-
-        watchVideoText = new Text();
-        watchVideoText.setFont("FFF Forward");
-        watchVideoText.setText("Watch Video");
-        watchVideoText.setTextSize(height/12);
-        watchVideoText.setOrigin(width/2 - width/3 + width/36 + 2*width/9 + width/36 + 13 * width / 72 - watchVideoText.getWidth()/2, height/2 + height/90, 0);
-        watchVideoText.refresh();
+        if (!purchasedSecondChance) {
+            watchVideoText = new Text();
+            watchVideoText.setFont("FFF Forward");
+            watchVideoText.setText("Watch Video");
+            watchVideoText.setTextSize(height / 12);
+            watchVideoText.setOrigin(width / 2 - width / 3 + width / 36 + 2 * width / 9 + width / 36 + 13 * width / 72 - watchVideoText.getWidth() / 2, height / 2, 0);
+            watchVideoText.refresh();
+        }
     }
 
 
@@ -476,6 +502,81 @@ public class MainGameState implements GameState {
         retryText.setTextSize((2*height/3)/5);
         retryText.setOrigin(17*width/24 - highScoreText.getWidth()/2, 11*height/15 - ((height/3)/5), 0);
         retryText.refresh();
+
+        loseShareBox = new RoundedRectangle();
+        loseShareBox.setHeight(height/5);
+        loseShareBox.setWidth(width/4);
+        loseShareBox.setCenter(17*width/24, height/2, 0);
+        loseShareBox.setPrecision(60);
+        loseShareBox.setCornerRadius(10f);
+        loseShareBox.refresh();
+        shareText = new Text();
+        shareText.setFont("FFF Forward");
+        shareText.setText("Share");
+        shareText.setTextSize((2*height/3)/5);
+        shareText.setOrigin(17*width/24 - shareText.getWidth()/2, height/2 - (height/3)/5, 0);
+        shareText.refresh();
+
+        loseLeaderboardBox = new RoundedRectangle();
+        loseLeaderboardBox.setHeight(height/5);
+        loseLeaderboardBox.setWidth(height/5);
+        loseLeaderboardBox.setCenter(17*width/24 - width/8 - width/50 - height/10, height/2, 0);
+        loseLeaderboardBox.setPrecision(60);
+        loseLeaderboardBox.setCornerRadius(10f);
+        loseLeaderboardBox.refresh();
+
+        float leaderboardImageHeight = 5*(height/5)/8;
+        float leaderboardImageWidth = leaderboardImageHeight * (196f/210f);
+        float leaderboardCenterX = 17*width/24 - width/8 - width/50 - height/10;
+        loseLeaderboardImage = new Image();
+        loseLeaderboardImage.setTextureHandle(Textures.leaderboardTexture);
+        loseLeaderboardImage.setVertices(new float[] {
+                leaderboardCenterX - leaderboardImageWidth/2, height/2 - leaderboardImageHeight/2, 0,
+                leaderboardCenterX - leaderboardImageWidth/2, height/2 + leaderboardImageHeight/2, 0,
+                leaderboardCenterX + leaderboardImageWidth/2, height/2 + leaderboardImageHeight/2, 0,
+                leaderboardCenterX + leaderboardImageWidth/2, height/2 - leaderboardImageHeight/2, 0
+        });
+        loseLeaderboardImage.setDrawOrder(new short[] {
+                0,1,2,0,2,3
+        });
+        loseLeaderboardImage.setUVCoordinates(new float[] {
+                0,0,
+                0,1,
+                1,1,
+                1,0
+        });
+        loseLeaderboardImage.refresh();
+
+
+        loseAchievementBox = new RoundedRectangle();
+        loseAchievementBox.setHeight(height/5);
+        loseAchievementBox.setWidth(height/5);
+        loseAchievementBox.setCenter(17*width/24 + width/8 + width/50 + height/10, height/2, 0);
+        loseAchievementBox.setPrecision(60);
+        loseAchievementBox.setCornerRadius(10f);
+        loseAchievementBox.refresh();
+
+        float achievementImageWidth = 5*(height/5)/8;
+        float achievementImageHeight = achievementImageWidth * (215f/256f);
+        float achievementCenterX = 17*width/24 + width/8 + width/50 + height/10;
+        loseAchievementImage= new Image();
+        loseAchievementImage.setTextureHandle(Textures.trophyTexture);
+        loseAchievementImage.setVertices(new float[] {
+                achievementCenterX - achievementImageWidth/2, height/2 - achievementImageHeight/2, 0,
+                achievementCenterX - achievementImageWidth/2, height/2 + achievementImageHeight/2, 0,
+                achievementCenterX + achievementImageWidth/2, height/2 + achievementImageHeight/2, 0,
+                achievementCenterX + achievementImageWidth/2, height/2 - achievementImageHeight/2, 0
+        });
+        loseAchievementImage.setDrawOrder(new short[] {
+                0,1,2,0,2,3
+        });
+        loseAchievementImage.setUVCoordinates(new float[] {
+                0,0,
+                0,1,
+                1,1,
+                1,0
+        });
+        loseAchievementImage.refresh();
     }
 
     private void handleSectionTouch() {
@@ -757,6 +858,21 @@ public class MainGameState implements GameState {
             backgroundRenderType.drawText(tapAndHoldText);
             backgroundRenderType.drawText(toStartText);
 
+            titleRenderType.drawShape(titleHighScoreBox);
+            backgroundRenderType.drawText(titleHighScoreText);
+
+            titleRenderType.drawShape(leaderboardBox);
+            backgroundRenderType.drawImage(leaderboardImage);
+
+            titleRenderType.drawShape(achievementBox);
+            backgroundRenderType.drawImage(achievementImage);
+
+            if (!purchasedSecondChance) {
+                titleRenderType.drawShape(purchaseSecondChanceBox);
+                backgroundRenderType.drawText(buyNoAdsAndText);
+                backgroundRenderType.drawText(secondChancesText);
+            }
+
             if (leftDown) {
                 lineRenderType.drawShape(leftCircle);
             } else {
@@ -768,7 +884,6 @@ public class MainGameState implements GameState {
                 greyRenderType.drawShape(rightCircle);
             }
         } else if (inLossMenu || inSecondChanceMenu) {
-            redRenderType.setAlpha(1);
             float[] verticalTranslateMVP = new float[16];
             Matrix.multiplyMM(verticalTranslateMVP, 0, viewProjectionMatrix, 0, verticalTranslate, 0);
             currentRenderer.setMatrix(verticalTranslateMVP);
@@ -785,8 +900,8 @@ public class MainGameState implements GameState {
             redRenderType.setAlpha(1f);
             defaultBackgroundRenderer.setAlpha(1f);
             defaultBackgroundRenderer.setMatrix(viewProjectionMatrix);
-            lightRedRenderType.setMatrix(viewProjectionMatrix);
-            lightRedRenderType.setAlpha(1f);
+            darkRedRenderType.setMatrix(viewProjectionMatrix);
+            darkRedRenderType.setAlpha(1f);
             if (inLossMenu) {
                 if (animatingLoss) {
                     long dt = System.currentTimeMillis() - timeOfLoss;
@@ -798,29 +913,43 @@ public class MainGameState implements GameState {
                     redRenderType.drawShape(loseScoreRectangle);
                     redRenderType.drawShape(highScoreBox);
                     redRenderType.drawShape(retryRectangle);
+                    redRenderType.drawShape(loseShareBox);
+                    redRenderType.drawShape(loseAchievementBox);
+                    redRenderType.drawShape(loseLeaderboardBox);
                     defaultBackgroundRenderer.drawText(loseScoreNumberText);
                     defaultBackgroundRenderer.drawText(loseScoreText);
                     defaultBackgroundRenderer.drawText(highScoreText);
                     defaultBackgroundRenderer.drawText(retryText);
+                    defaultBackgroundRenderer.drawText(shareText);
+                    defaultBackgroundRenderer.drawImage(loseAchievementImage);
+                    defaultBackgroundRenderer.drawImage(loseLeaderboardImage);
                 } else {
                     redRenderType.drawShape(loseScoreRectangle);
                     redRenderType.drawShape(highScoreBox);
                     redRenderType.drawShape(retryRectangle);
+                    redRenderType.drawShape(loseShareBox);
+                    redRenderType.drawShape(loseLeaderboardBox);
+                    redRenderType.drawShape(loseAchievementBox);
                     defaultBackgroundRenderer.drawText(loseScoreNumberText);
                     defaultBackgroundRenderer.drawText(loseScoreText);
                     defaultBackgroundRenderer.drawText(highScoreText);
                     defaultBackgroundRenderer.drawText(retryText);
+                    defaultBackgroundRenderer.drawText(shareText);
+                    defaultBackgroundRenderer.drawImage(loseLeaderboardImage);
+                    defaultBackgroundRenderer.drawImage(loseAchievementImage);
                 }
             }
 
             if (inSecondChanceMenu) {
                 redRenderType.drawShape(secondChanceBox);
-                lightRedRenderType.drawShape(endGameButton);
-                lightRedRenderType.drawShape(secondChanceButton);
+                darkRedRenderType.drawShape(endGameButton);
+                darkRedRenderType.drawShape(secondChanceButton);
                 defaultBackgroundRenderer.drawText(gameText);
                 defaultBackgroundRenderer.drawText(endText);
                 defaultBackgroundRenderer.drawText(secondChanceText);
-                defaultBackgroundRenderer.drawText(watchVideoText);
+                if (!purchasedSecondChance) {
+                    defaultBackgroundRenderer.drawText(watchVideoText);
+                }
             }
         } else if (startingSecondChance) {
             float[] verticalTranslateMVP = new float[16];
@@ -892,13 +1021,25 @@ public class MainGameState implements GameState {
                 if (lastTitleCalculation == -1 || dt <= 0) {
                     lastTitleCalculation = time;
                     sane = false;
+                    defaultBackgroundRenderer.setAlpha(titleAlpha);
                     titleRenderType.setAlpha(titleAlpha);
                     titleRenderType.drawShape(titleRectangle);
-                    backgroundRenderType.setAlpha(titleAlpha);
-                    backgroundRenderType.drawText(titleText);
+                    defaultBackgroundRenderer.drawText(titleText);
                     titleRenderType.drawShape(tapToStartRectangle);
-                    backgroundRenderType.drawText(tapAndHoldText);
-                    backgroundRenderType.drawText(toStartText);
+                    defaultBackgroundRenderer.drawText(tapAndHoldText);
+                    defaultBackgroundRenderer.drawText(toStartText);
+                    titleRenderType.drawShape(titleHighScoreBox);
+                    defaultBackgroundRenderer.drawText(titleHighScoreText);
+                    titleRenderType.drawShape(leaderboardBox);
+                    titleRenderType.drawShape(achievementBox);
+                    defaultBackgroundRenderer.drawImage(achievementImage);
+                    defaultBackgroundRenderer.drawImage(leaderboardImage);
+
+                    if (!purchasedSecondChance) {
+                        titleRenderType.drawShape(purchaseSecondChanceBox);
+                        defaultBackgroundRenderer.drawText(buyNoAdsAndText);
+                        defaultBackgroundRenderer.drawText(secondChancesText);
+                    }
                 }
                 if (sane) {
                     float alphaChange = dt * (1/500f);
@@ -911,10 +1052,23 @@ public class MainGameState implements GameState {
                     titleRenderType.setAlpha(titleAlpha);
                     titleRenderType.drawShape(titleRectangle);
                     titleRenderType.drawShape(tapToStartRectangle);
+                    titleRenderType.drawShape(titleHighScoreBox);
+                    titleRenderType.drawShape(leaderboardBox);
+                    titleRenderType.drawShape(achievementBox);
                     defaultBackgroundRenderer.setAlpha(titleAlpha);
                     defaultBackgroundRenderer.drawText(titleText);
                     defaultBackgroundRenderer.drawText(tapAndHoldText);
                     defaultBackgroundRenderer.drawText(toStartText);
+                    defaultBackgroundRenderer.drawText(titleHighScoreText);
+                    defaultBackgroundRenderer.drawImage(achievementImage);
+                    defaultBackgroundRenderer.drawImage(leaderboardImage);
+
+                    if (!purchasedSecondChance) {
+                        titleRenderType.drawShape(purchaseSecondChanceBox);
+                        defaultBackgroundRenderer.drawText(buyNoAdsAndText);
+                        defaultBackgroundRenderer.drawText(secondChancesText);
+                    }
+
                     defaultBackgroundRenderer.setAlpha(1f);
                     if (!titleInView) {
                         titleRectangle = null;
@@ -1004,6 +1158,112 @@ public class MainGameState implements GameState {
             toStartText.setTextSize((height/4)/3);
             toStartText.setOrigin(width/2 - toStartText.getWidth()/2, height/2, 0);
             toStartText.refresh();
+
+            float bottomButtonHeight = height/6;
+
+            titleHighScoreBox = new RoundedRectangle();
+            titleHighScoreBox.setHeight(bottomButtonHeight);
+            titleHighScoreBox.setCenter(width/2, 4*height/5, 0);
+            titleHighScoreBox.setCornerRadius(10f);
+            titleHighScoreBox.setWidth(11*width/32);
+            titleHighScoreBox.setPrecision(60);
+            titleHighScoreBox.refresh();
+
+            titleHighScoreText = new Text();
+            titleHighScoreText.setFont("FFF Forward");
+            titleHighScoreText.setText("Best: " + highScore);
+            titleHighScoreText.setTextSize((2*height/3)/5);
+            titleHighScoreText.setOrigin(width/2 - titleHighScoreText.getWidth()/2, 4*height/5 - (2*height/3)/10, 0);
+            titleHighScoreText.refresh();
+
+            float leaderboardCenterX = width/2 - 11 * width / 64 - width / 36 - bottomButtonHeight/2;
+
+            leaderboardBox = new RoundedRectangle();
+            leaderboardBox.setHeight(bottomButtonHeight);
+            leaderboardBox.setWidth(bottomButtonHeight);
+            leaderboardBox.setCornerRadius(10f);
+            leaderboardBox.setPrecision(60);
+            leaderboardBox.setCenter(leaderboardCenterX, 4*height/5, 0);
+            leaderboardBox.refresh();
+
+            float leaderboardImageHeight = 5*bottomButtonHeight/8;
+            float leaderboardImageWidth = leaderboardImageHeight * (196f/210f);
+
+            leaderboardImage = new Image();
+            leaderboardImage.setTextureHandle(Textures.leaderboardTexture);
+            leaderboardImage.setVertices(new float[] {
+                    leaderboardCenterX - leaderboardImageWidth/2, 4*height/5- leaderboardImageHeight/2, 0,
+                    leaderboardCenterX - leaderboardImageWidth/2, 4*height/5 + leaderboardImageHeight/2, 0,
+                    leaderboardCenterX + leaderboardImageWidth/2, 4*height/5 + leaderboardImageHeight/2, 0,
+                    leaderboardCenterX + leaderboardImageWidth/2, 4*height/5 - leaderboardImageHeight/2, 0
+            });
+            leaderboardImage.setDrawOrder(new short[] {
+                    0,1,2,0,2,3
+            });
+            leaderboardImage.setUVCoordinates(new float[] {
+                    0,0,
+                    0,1,
+                    1,1,
+                    1,0
+            });
+            leaderboardImage.refresh();
+
+            float achievementCenterX;
+
+            if (!purchasedSecondChance) {
+                achievementCenterX = width/2 - 11 * width / 64 - width / 36 - bottomButtonHeight - width/36 - bottomButtonHeight/2;
+                purchaseSecondChanceBox = new RoundedRectangle();
+                purchaseSecondChanceBox.setHeight(bottomButtonHeight);
+                purchaseSecondChanceBox.setWidth(width/4);
+                purchaseSecondChanceBox.setCenter(width/2 + 11 * width/64 + width/36 + width/8, 4*height/5, 0);
+                purchaseSecondChanceBox.setPrecision(60);
+                purchaseSecondChanceBox.setCornerRadius(10f);
+                purchaseSecondChanceBox.refresh();
+
+                buyNoAdsAndText = new Text();
+                buyNoAdsAndText.setFont("FFF Forward");
+                buyNoAdsAndText.setText("Buy No Ads And");
+                buyNoAdsAndText.setTextSize(height/16);
+                buyNoAdsAndText.setOrigin(width/2 + 11 * width/64 + width/36 + width/8 - buyNoAdsAndText.getWidth()/2, 4*height/5 - height/16, 0);
+                buyNoAdsAndText.refresh();
+
+                secondChancesText = new Text();
+                secondChancesText.setFont("FFF Forward");
+                secondChancesText.setText("Second Chances");
+                secondChancesText.setTextSize(height/16);
+                secondChancesText.setOrigin(width/2 + 11 * width/64 + width/36 + width/8 - secondChancesText.getWidth()/2, 4*height/5, 0);
+                secondChancesText.refresh();
+            } else {
+                achievementCenterX = width/2 + 11 * width / 64 + width / 36 + bottomButtonHeight/2;
+            }
+            achievementBox = new RoundedRectangle();
+            achievementBox.setHeight(bottomButtonHeight);
+            achievementBox.setWidth(bottomButtonHeight);
+            achievementBox.setCornerRadius(10f);
+            achievementBox.setPrecision(60);
+            achievementBox.setCenter(achievementCenterX, 4*height/5, 0);
+            achievementBox.refresh();
+
+            float achievementImageWidth = 5*bottomButtonHeight/8;
+            float achievementImageHeight = achievementImageWidth * (215f/256f);
+            achievementImage = new Image();
+            achievementImage.setTextureHandle(Textures.trophyTexture);
+            achievementImage.setVertices(new float[] {
+                    achievementCenterX - achievementImageWidth/2, 4*height/5 - achievementImageHeight/2, 0,
+                    achievementCenterX - achievementImageWidth/2, 4*height/5 + achievementImageHeight/2, 0,
+                    achievementCenterX + achievementImageWidth/2, 4*height/5 + achievementImageHeight/2, 0,
+                    achievementCenterX + achievementImageWidth/2, 4*height/5 - achievementImageHeight/2, 0
+            });
+            achievementImage.setDrawOrder(new short[] {
+                    0,1,2,0,2,3
+            });
+            achievementImage.setUVCoordinates(new float[] {
+                    0,0,
+                    0,1,
+                    1,1,
+                    1,0
+            });
+            achievementImage.refresh();
         }
         this.viewProjectionMatrix = viewProjectionMatrix;
         this.height = height;
