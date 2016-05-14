@@ -2,10 +2,19 @@ package com.provectusstudios.transverse;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
+import android.util.Log;
 import android.view.MotionEvent;
+
+import com.jirbo.adcolony.AdColony;
+import com.jirbo.adcolony.AdColonyV4VCAd;
+import com.jirbo.adcolony.AdColonyV4VCListener;
+import com.jirbo.adcolony.AdColonyV4VCReward;
+import com.unity3d.ads.android.IUnityAdsListener;
+import com.unity3d.ads.android.UnityAds;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -13,7 +22,7 @@ import java.util.List;
 import java.util.Random;
 
 
-public class MainGameState implements GameState {
+public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAdsListener {
 
     //Prevent concurrency errors by changing this boolean rather than calling loss method
     private boolean scheduledLoss = false;
@@ -166,6 +175,11 @@ public class MainGameState implements GameState {
     private Text shareText;
 
     public MainGameState(MainRenderer mainRenderer) {
+
+        AdColony.addV4VCListener(this);
+
+        UnityAds.setListener(this);
+
         this.mainRenderer = mainRenderer;
         readHighScore();
         greyRenderType = new SolidRenderType();
@@ -253,7 +267,9 @@ public class MainGameState implements GameState {
                     }
                     if (rightDown && leftDown) {
                         leftPath = new Path();
+                        leftPath.setWidth(20f);
                         rightPath = new Path();
+                        rightPath.setWidth(20f);
                         startingSecondChance = false;
                         scheduledLoss = false;
                         started = true;
@@ -263,6 +279,12 @@ public class MainGameState implements GameState {
                 if (inLossMenu) {
                     if (retryRectangle.containsPoint(dpX, dpY)) {
                         scheduledRestart = true;
+                    } else if (loseShareBox.containsPoint(dpX, dpY)) {
+                        Intent sendIntent = new Intent();
+                        sendIntent.setAction(Intent.ACTION_SEND);
+                        sendIntent.putExtra(Intent.EXTRA_TEXT, "I just got " + score + " on Transverse!");
+                        sendIntent.setType("text/plain");
+                        mainRenderer.getContext().startActivity(sendIntent);
                     }
                 }
                 if (inSecondChanceMenu) {
@@ -270,7 +292,14 @@ public class MainGameState implements GameState {
                         inSecondChanceMenu = false;
                         finishGame();
                     } else if (secondChanceButton.containsPoint(dpX, dpY)) {
-                        createSecondChance();
+                        if (Math.random() > .5f) {
+                            AdColonyV4VCAd ad = new AdColonyV4VCAd(MainActivity.retry_zone);
+                            ad.show();
+                        } else {
+                            if (UnityAds.setZone("rewardedVideo") && UnityAds.canShow()) {
+                                UnityAds.show();
+                            }
+                        }
                     }
                 }
                 break;
@@ -793,7 +822,9 @@ public class MainGameState implements GameState {
         leftDown = false;
         rightDown = false;
         leftPath = new Path();
+        leftPath.setWidth(20f);
         rightPath = new Path();
+        rightPath.setWidth(20f);
         titleInView = true;
         circlesInView = true;
         wallsInView = true;
@@ -1192,7 +1223,7 @@ public class MainGameState implements GameState {
             leaderboardImage = new Image();
             leaderboardImage.setTextureHandle(Textures.leaderboardTexture);
             leaderboardImage.setVertices(new float[] {
-                    leaderboardCenterX - leaderboardImageWidth/2, 4*height/5- leaderboardImageHeight/2, 0,
+                    leaderboardCenterX - leaderboardImageWidth/2, 4*height/5 - leaderboardImageHeight/2, 0,
                     leaderboardCenterX - leaderboardImageWidth/2, 4*height/5 + leaderboardImageHeight/2, 0,
                     leaderboardCenterX + leaderboardImageWidth/2, 4*height/5 + leaderboardImageHeight/2, 0,
                     leaderboardCenterX + leaderboardImageWidth/2, 4*height/5 - leaderboardImageHeight/2, 0
@@ -1222,7 +1253,7 @@ public class MainGameState implements GameState {
 
                 buyNoAdsAndText = new Text();
                 buyNoAdsAndText.setFont("FFF Forward");
-                buyNoAdsAndText.setText("Buy No Ads And");
+                buyNoAdsAndText.setText("No Ads And");
                 buyNoAdsAndText.setTextSize(height/16);
                 buyNoAdsAndText.setOrigin(width/2 + 11 * width/64 + width/36 + width/8 - buyNoAdsAndText.getWidth()/2, 4*height/5 - height/16, 0);
                 buyNoAdsAndText.refresh();
@@ -1331,4 +1362,42 @@ public class MainGameState implements GameState {
         }
     }
 
+    @Override
+    public void onAdColonyV4VCReward(AdColonyV4VCReward adColonyV4VCReward) {
+        if (adColonyV4VCReward.success() && inSecondChanceMenu) {
+            createSecondChance();
+        }
+    }
+
+    @Override
+    public void onHide() {
+
+    }
+
+    @Override
+    public void onShow() {
+
+    }
+
+    @Override
+    public void onVideoStarted() {
+
+    }
+
+    @Override
+    public void onVideoCompleted(String itemID, boolean skipped) {
+        if (!skipped && inSecondChanceMenu) {
+            createSecondChance();
+        }
+    }
+
+    @Override
+    public void onFetchCompleted() {
+
+    }
+
+    @Override
+    public void onFetchFailed() {
+
+    }
 }

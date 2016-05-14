@@ -1,6 +1,7 @@
 package com.provectusstudios.transverse;
 
 import android.opengl.GLES20;
+import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -134,7 +135,6 @@ public class Path implements AlphaShape {
                 0, alphaBuffer);
 
         GLES20.glEnableVertexAttribArray(alphaHandle);
-
         GLES20.glLineWidth(width);
 
         GLES20.glDrawArrays(GLES20.GL_LINE_STRIP, 0, vertices.length/3);

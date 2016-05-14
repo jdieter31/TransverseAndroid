@@ -19,6 +19,8 @@ public class MainRenderer implements GLSurfaceView.Renderer {
 
     private GameState gameState;
 
+    private boolean initialized = false;
+
     private float width;
     private float height;
 
@@ -46,6 +48,7 @@ public class MainRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onSurfaceCreated(GL10 unused, EGLConfig config) {
+
         GLES20.glClearColor(1f, 1f, 1f, 1f);
 
         Shaders.loadShaders();
@@ -60,7 +63,12 @@ public class MainRenderer implements GLSurfaceView.Renderer {
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
-        gameState = new MainGameState(this);
+        if (!initialized) {
+
+            gameState = new MainGameState(this);
+
+            initialized = true;
+        }
 
         if (SHOULD_LOG_FPS) {
             lastFpsCalc = System.currentTimeMillis();

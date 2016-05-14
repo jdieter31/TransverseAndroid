@@ -8,7 +8,7 @@ import android.view.MotionEvent;
  * Created by Justin on 8/9/2014.
  */
 public class MainSurfaceView extends GLSurfaceView {
-    MainRenderer renderer;
+    private MainRenderer renderer;
 
     public MainSurfaceView(Context context) {
         super(context);
