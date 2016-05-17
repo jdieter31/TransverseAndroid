@@ -27,11 +27,13 @@ public class MainRenderer implements GLSurfaceView.Renderer {
     private int fps;
     private long lastFpsCalc;
 
+    private boolean noAds = false;
+
     private float[] projectionMatrix = new float[16];
     private float[] viewMatrix = new float[16];
     private float[] viewAndProjectionMatrix = new float[16];
 
-    private static final boolean SHOULD_LOG_FPS = true;
+    private static final boolean SHOULD_LOG_FPS = false;
 
     public MainRenderer(Context context) {
         this.context = context;
@@ -66,7 +68,9 @@ public class MainRenderer implements GLSurfaceView.Renderer {
         if (!initialized) {
 
             gameState = new MainGameState(this);
-
+            if (noAds) {
+                ((MainGameState) gameState).setNoAds();
+            }
             initialized = true;
         }
 
@@ -139,4 +143,12 @@ public class MainRenderer implements GLSurfaceView.Renderer {
             gameState.handleTouchEvent(event);
         }
     }
+
+    public void setNoAds() {
+        noAds = true;
+        if (gameState != null) {
+            ((MainGameState) gameState).setNoAds();
+        }
+    }
+
 }

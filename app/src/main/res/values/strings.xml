@@ -5,4 +5,7 @@
     <string name="action_settings">Settings</string>
     <string name="saved_high_score">high_score</string>
 
+    <string name="app_id">37677981581</string>
+    <string name="signin_failure">Connection to game services failed, leaderboard and achievement features will not work</string>
+
 </resources>

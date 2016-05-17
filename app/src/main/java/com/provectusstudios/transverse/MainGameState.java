@@ -6,13 +6,16 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
-import android.util.Log;
+
 import android.view.MotionEvent;
 
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.games.Games;
 import com.jirbo.adcolony.AdColony;
 import com.jirbo.adcolony.AdColonyV4VCAd;
 import com.jirbo.adcolony.AdColonyV4VCListener;
 import com.jirbo.adcolony.AdColonyV4VCReward;
+import com.jirbo.adcolony.AdColonyVideoAd;
 import com.unity3d.ads.android.IUnityAdsListener;
 import com.unity3d.ads.android.UnityAds;
 
@@ -27,6 +30,8 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     //Prevent concurrency errors by changing this boolean rather than calling loss method
     private boolean scheduledLoss = false;
     private boolean scheduledRestart = false;
+
+    private static String LEADERBOARD_ID = "CgkIjb-hrowBEAIQAQ";
 
     private MainRenderer mainRenderer;
 
@@ -174,11 +179,29 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     private RoundedRectangle loseShareBox;
     private Text shareText;
 
+    private GoogleApiClient gClient;
+
+    public static final String zeroAchievement = "CgkIjb-hrowBEAIQBw";
+    public static final String tenAchievement = "CgkIjb-hrowBEAIQAg";
+    public static final String twentyAchievement = "CgkIjb-hrowBEAIQAw";
+    public static final String thirtyAchievement = "CgkIjb-hrowBEAIQBA";
+    public static final String fourtyAchievement = "CgkIjb-hrowBEAIQBQ";
+    public static final String fiftyAchievement = "CgkIjb-hrowBEAIQBg";
+    public static final String hundredAchievement = "CgkIjb-hrowBEAIQCA";
+
+    private int gamesPlayedSinceAd = 0;
+    private boolean initialAd = true;
+    private static final int initialAds = 2;
+    private static final int gamesPerAd = 5;
+
+
     public MainGameState(MainRenderer mainRenderer) {
 
         AdColony.addV4VCListener(this);
 
         UnityAds.setListener(this);
+
+        gClient = ((MainActivity) mainRenderer.getContext()).getGClient();
 
         this.mainRenderer = mainRenderer;
         readHighScore();
@@ -190,8 +213,8 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         lineRenderType.setColor(.322f, .808f, 1f);
         verticalTranslate = new float[16];
         Matrix.setIdentityM(verticalTranslate, 0);
-        leftPath.setWidth(20f);
-        rightPath.setWidth(20f);
+        leftPath.setWidth(10f);
+        rightPath.setWidth(10f);
         defaultBackgroundRenderer = backgroundRenderType = new SolidRenderType();
         backgroundRenderType.setColor(.95f, .95f, .95f);
         scoreRectangleRenderType = new SolidRenderType();
@@ -247,6 +270,20 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                         started = true;
                         lastMoveCalc = System.currentTimeMillis();
                     }
+                    if (leaderboardBox.containsPoint(dpX, dpY)) {
+                        if (gClient != null && gClient.isConnected()) {
+                            ((Activity) mainRenderer.getContext()).startActivityForResult(Games.Leaderboards.getLeaderboardIntent(gClient,
+                                    LEADERBOARD_ID), 0);
+                        }
+                    }
+                    if (achievementBox.containsPoint(dpX, dpY)) {
+                        if (gClient != null && gClient.isConnected()) {
+                            ((Activity) mainRenderer.getContext()).startActivityForResult(Games.Achievements.getAchievementsIntent(gClient), 0);
+                        }
+                    }
+                    if (!purchasedSecondChance && purchaseSecondChanceBox != null && purchaseSecondChanceBox.containsPoint(dpX, dpY)) {
+                        ((MainActivity) mainRenderer.getContext()).purchaseNoAds();
+                    }
                 }
                 if (startingSecondChance) {
                     if (!rightDown && rightSecondChanceCircle.containsPoint(dpX, dpY + verticalChange)) {
@@ -267,9 +304,9 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     }
                     if (rightDown && leftDown) {
                         leftPath = new Path();
-                        leftPath.setWidth(20f);
+                        leftPath.setWidth(10f);
                         rightPath = new Path();
-                        rightPath.setWidth(20f);
+                        rightPath.setWidth(10f);
                         startingSecondChance = false;
                         scheduledLoss = false;
                         started = true;
@@ -282,9 +319,18 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     } else if (loseShareBox.containsPoint(dpX, dpY)) {
                         Intent sendIntent = new Intent();
                         sendIntent.setAction(Intent.ACTION_SEND);
-                        sendIntent.putExtra(Intent.EXTRA_TEXT, "I just got " + score + " on Transverse!");
+                        sendIntent.putExtra(Intent.EXTRA_TEXT, "I scored " + score + " points on #Transverse! Can you beat it? https://play.google.com/store/apps/details?id=com.provectusstudios.transverse");
                         sendIntent.setType("text/plain");
                         mainRenderer.getContext().startActivity(sendIntent);
+                    } else if (loseLeaderboardBox.containsPoint(dpX, dpY)) {
+                        if (gClient != null && gClient.isConnected()) {
+                            ((Activity) mainRenderer.getContext()).startActivityForResult(Games.Leaderboards.getLeaderboardIntent(gClient,
+                                    LEADERBOARD_ID), 0);
+                        }
+                    } else if (loseAchievementBox.containsPoint(dpX, dpY)) {
+                        if (gClient != null && gClient.isConnected()) {
+                            ((Activity) mainRenderer.getContext()).startActivityForResult(Games.Achievements.getAchievementsIntent(gClient), 0);
+                        }
                     }
                 }
                 if (inSecondChanceMenu) {
@@ -292,7 +338,9 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                         inSecondChanceMenu = false;
                         finishGame();
                     } else if (secondChanceButton.containsPoint(dpX, dpY)) {
-                        if (Math.random() > .5f) {
+                        if (purchasedSecondChance)  {
+                            createSecondChance();
+                        } else if (Math.random() > .5f) {
                             AdColonyV4VCAd ad = new AdColonyV4VCAd(MainActivity.retry_zone);
                             ad.show();
                         } else {
@@ -477,12 +525,40 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         }
     }
 
-
+    private void unlockAchievements() {
+        if (gClient != null && gClient.isConnected()) {
+            if (score == 0) {
+                Games.Achievements.unlock(gClient, zeroAchievement);
+            }
+            if (score >= 10) {
+                Games.Achievements.unlock(gClient, tenAchievement);
+            }
+            if (score >= 20) {
+                Games.Achievements.unlock(gClient, twentyAchievement);
+            }
+            if (score >= 30) {
+                Games.Achievements.unlock(gClient, thirtyAchievement);
+            }
+            if (score >= 40) {
+                Games.Achievements.unlock(gClient, fourtyAchievement);
+            }
+            if (score >= 50) {
+                Games.Achievements.unlock(gClient, fiftyAchievement);
+            }
+            if (score >= 100) {
+                Games.Achievements.unlock(gClient, hundredAchievement);
+            }
+        }
+    }
 
     private void finishGame() {
+        if (gClient != null && gClient.isConnected()) {
+            Games.Leaderboards.submitScore(gClient, LEADERBOARD_ID, score);
+        }
         if (score > highScore) {
             updateHighScore(score);
         }
+        unlockAchievements();
         inLossMenu = true;
         animatingLoss = true;
         timeOfLoss = System.currentTimeMillis();
@@ -688,10 +764,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             for (int i = leftPath.points.size() - 2; i >= 0; i--) {
                 Path.Point point = leftPath.points.get(i);
                 totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
-                if (totalDistance >= height/6) {
-                    leftPath.setAlpha(i, (height/3 - totalDistance) / (height/6));
+                if (totalDistance >= height/4) {
+                    leftPath.setAlpha(i, (height/2 - totalDistance) / (height/4));
                 }
-                if (totalDistance >= height/3) {
+                if (totalDistance >= height/2) {
                     pointsToRemove = i + 1;
                     break;
                 }
@@ -706,10 +782,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             for (int i = rightPath.points.size() - 2; i >= 0; i--) {
                 Path.Point point = rightPath.points.get(i);
                 totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
-                if (totalDistance >= height/6) {
-                    rightPath.setAlpha(i, (height/3 - totalDistance) / (height/6));
+                if (totalDistance >= height/4) {
+                    rightPath.setAlpha(i, (height/2 - totalDistance) / (height/4));
                 }
-                if (totalDistance >= height/3) {
+                if (totalDistance >= height/2) {
                     pointsToRemove = i + 1;
                     break;
                 }
@@ -761,7 +837,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             lastSpeedCalculation = time;
             return;
         }
-        speed = 120 * ((float) Math.log(1 + score)) + 100;
+        speed = 90 * ((float) Math.log(2 + score)) + 100;
         lastSpeedCalculation = time;
     }
 
@@ -822,9 +898,9 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         leftDown = false;
         rightDown = false;
         leftPath = new Path();
-        leftPath.setWidth(20f);
+        leftPath.setWidth(10f);
         rightPath = new Path();
-        rightPath.setWidth(20f);
+        rightPath.setWidth(10f);
         titleInView = true;
         circlesInView = true;
         wallsInView = true;
@@ -841,6 +917,25 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         Matrix.setIdentityM(verticalTranslate, 0);
         sectionsInView = new ArrayList<>();
         refreshDimensions(width, height, viewProjectionMatrix);
+        if (!purchasedSecondChance) {
+            gamesPlayedSinceAd++;
+            if (initialAd && gamesPlayedSinceAd >= initialAds) {
+                gamesPlayedSinceAd = gamesPerAd;
+                initialAd = false;
+            }
+            if (gamesPlayedSinceAd >= gamesPerAd) {
+                if (Math.random() > .5f) {
+                    AdColonyVideoAd ad = new AdColonyVideoAd(MainActivity.interstitial_zone_id);
+                    ad.show();
+                } else {
+                    if (UnityAds.setZone("video") && UnityAds.canShow() )
+                    {
+                        UnityAds.show();
+                    }
+                }
+                gamesPlayedSinceAd = 0;
+            }
+        }
     }
 
 
@@ -1386,7 +1481,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
     @Override
     public void onVideoCompleted(String itemID, boolean skipped) {
-        if (!skipped && inSecondChanceMenu) {
+        if (!skipped && inSecondChanceMenu && UnityAds.getZone().equals("rewardedVideo")) {
             createSecondChance();
         }
     }
@@ -1399,5 +1494,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     @Override
     public void onFetchFailed() {
 
+    }
+
+    public void setNoAds() {
+        purchasedSecondChance = true;
+        refreshDimensions(width, height, viewProjectionMatrix);
     }
 }

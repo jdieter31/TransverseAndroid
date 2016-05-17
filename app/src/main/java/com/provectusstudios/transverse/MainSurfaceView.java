@@ -37,4 +37,8 @@ public class MainSurfaceView extends GLSurfaceView {
         return true;
     }
 
+    public void setNoAds() {
+        renderer.setNoAds();
+    }
+
 }

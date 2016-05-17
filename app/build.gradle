@@ -1,20 +1,31 @@
 apply plugin: 'com.android.application'
 
 android {
+    signingConfigs {
+        config {
+            keyAlias 'TransverseKey'
+            keyPassword 'pi314159'
+            storeFile file('F:/Google Drive/Android Studio/Key Store/TransverseKeystore.jks')
+            storePassword 'pi314159'
+        }
+    }
     compileSdkVersion 23
     buildToolsVersion "23.0.3"
-
     defaultConfig {
         applicationId "com.provectusstudios.transverse"
         minSdkVersion 15
         targetSdkVersion 23
-        versionCode 1
+        versionCode 3
         versionName "1.0"
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.config
+        }
+        debug {
+            signingConfig signingConfigs.config
         }
     }
 }
@@ -25,4 +36,5 @@ dependencies {
     compile 'com.android.support:appcompat-v7:23.3.0'
     compile files('libs/adcolony.jar')
     compile project(':unity-ads')
+    compile project(':BaseGameUtils')
 }
