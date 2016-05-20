@@ -83,7 +83,7 @@ public class GateSubSection implements SubSection {
             lengthMinimum = 2*width/5 + difficulty * width/3;
             lengthRange = difficulty * width/4;
         } else {
-            lengthMinimum = width/5 + (1 - difficulty) * width/3;
+            lengthMinimum = width/4 + (1 - difficulty) * width/3;
             lengthRange = random.nextFloat() * difficulty * width/4;
         }
 

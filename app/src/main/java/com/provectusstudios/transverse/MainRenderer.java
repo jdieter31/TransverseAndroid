@@ -135,7 +135,9 @@ public class MainRenderer implements GLSurfaceView.Renderer {
     }
 
     public void onResume() {
-
+        if (gameState != null) {
+            ((MainGameState) gameState).onResume();
+        }
     }
 
     public void handleTouchEvent(MotionEvent event) {

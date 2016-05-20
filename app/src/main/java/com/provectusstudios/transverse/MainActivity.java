@@ -79,6 +79,8 @@ public class MainActivity extends Activity implements IUnityAdsListener, GoogleA
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(savedInstanceState);
 
+        AnalyticsTrackers.initialize(this);
+
         AdColony.configure(this, client_options, app_id, retry_zone, interstitial_zone_id);
         UnityAds.init(this, unity_id, this);
         UnityAds.setTestMode(false);

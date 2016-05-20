@@ -7,8 +7,11 @@ import android.content.SharedPreferences;
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
 
+import android.util.Log;
 import android.view.MotionEvent;
 
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.Tracker;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.games.Games;
 import com.jirbo.adcolony.AdColony;
@@ -30,6 +33,8 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     //Prevent concurrency errors by changing this boolean rather than calling loss method
     private boolean scheduledLoss = false;
     private boolean scheduledRestart = false;
+    private boolean scheduledEndGame = false;
+    private boolean scheduledSecondChance = false;
 
     private static String LEADERBOARD_ID = "CgkIjb-hrowBEAIQAQ";
 
@@ -203,6 +208,11 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
         gClient = ((MainActivity) mainRenderer.getContext()).getGClient();
 
+        Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+        tracker.setScreenName("Main Menu");
+        tracker.send(new HitBuilders.ScreenViewBuilder().build());
+
+
         this.mainRenderer = mainRenderer;
         readHighScore();
         greyRenderType = new SolidRenderType();
@@ -267,16 +277,25 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                         leftPointer = pointerID;
                     }
                     if (rightDown && leftDown) {
+                        Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+                        tracker.setScreenName("Gameplay");
+                        tracker.send(new HitBuilders.ScreenViewBuilder().build());
                         started = true;
                         lastMoveCalc = System.currentTimeMillis();
                     }
                     if (leaderboardBox.containsPoint(dpX, dpY)) {
                         if (gClient != null && gClient.isConnected()) {
+                            Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+                            tracker.setScreenName("Leaderboard");
+                            tracker.send(new HitBuilders.ScreenViewBuilder().build());
                             ((Activity) mainRenderer.getContext()).startActivityForResult(Games.Leaderboards.getLeaderboardIntent(gClient,
                                     LEADERBOARD_ID), 0);
                         }
                     }
                     if (achievementBox.containsPoint(dpX, dpY)) {
+                        Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+                        tracker.setScreenName("Achievements");
+                        tracker.send(new HitBuilders.ScreenViewBuilder().build());
                         if (gClient != null && gClient.isConnected()) {
                             ((Activity) mainRenderer.getContext()).startActivityForResult(Games.Achievements.getAchievementsIntent(gClient), 0);
                         }
@@ -317,6 +336,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     if (retryRectangle.containsPoint(dpX, dpY)) {
                         scheduledRestart = true;
                     } else if (loseShareBox.containsPoint(dpX, dpY)) {
+                        Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+                        tracker.send(new HitBuilders.EventBuilder()
+                                .setCategory("Social")
+                                .setAction("Share")
+                                .setNonInteraction(true)
+                                .build());
                         Intent sendIntent = new Intent();
                         sendIntent.setAction(Intent.ACTION_SEND);
                         sendIntent.putExtra(Intent.EXTRA_TEXT, "I scored " + score + " points on #Transverse! Can you beat it? https://play.google.com/store/apps/details?id=com.provectusstudios.transverse");
@@ -324,10 +349,16 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                         mainRenderer.getContext().startActivity(sendIntent);
                     } else if (loseLeaderboardBox.containsPoint(dpX, dpY)) {
                         if (gClient != null && gClient.isConnected()) {
+                            Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+                            tracker.setScreenName("Leaderboard");
+                            tracker.send(new HitBuilders.ScreenViewBuilder().build());
                             ((Activity) mainRenderer.getContext()).startActivityForResult(Games.Leaderboards.getLeaderboardIntent(gClient,
                                     LEADERBOARD_ID), 0);
                         }
                     } else if (loseAchievementBox.containsPoint(dpX, dpY)) {
+                        Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+                        tracker.setScreenName("Achievements");
+                        tracker.send(new HitBuilders.ScreenViewBuilder().build());
                         if (gClient != null && gClient.isConnected()) {
                             ((Activity) mainRenderer.getContext()).startActivityForResult(Games.Achievements.getAchievementsIntent(gClient), 0);
                         }
@@ -336,16 +367,20 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 if (inSecondChanceMenu) {
                     if (endGameButton.containsPoint(dpX, dpY)) {
                         inSecondChanceMenu = false;
-                        finishGame();
+                        scheduledEndGame = true;
                     } else if (secondChanceButton.containsPoint(dpX, dpY)) {
                         if (purchasedSecondChance)  {
-                            createSecondChance();
+                            scheduledSecondChance = true;
                         } else if (Math.random() > .5f) {
                             AdColonyV4VCAd ad = new AdColonyV4VCAd(MainActivity.retry_zone);
                             ad.show();
                         } else {
-                            if (UnityAds.setZone("rewardedVideo") && UnityAds.canShow()) {
-                                UnityAds.show();
+                            try {
+                                if (UnityAds.setZone("rewardedVideo") && UnityAds.canShow()) {
+                                    UnityAds.show();
+                                }
+                            } catch (IllegalStateException e) {
+                                Log.e("Transverse", e.getMessage());
                             }
                         }
                     }
@@ -418,10 +453,13 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     }
 
     private void createSecondChance() {
-
+        Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+        tracker.setScreenName("Gameplay");
+        tracker.send(new HitBuilders.ScreenViewBuilder().build());
         if (currentSection != null) {
             currentSection.empty();
         }
+        scheduledSecondChance = false;
         inSecondChanceMenu = false;
         hadSecondChance = true;
         startingSecondChance = true;
@@ -464,6 +502,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
 
     private void createSecondChanceMenu() {
+        Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+        tracker.setScreenName("Second Chance Menu");
+        tracker.send(new HitBuilders.ScreenViewBuilder().build());
+
         hadSecondChance = true;
         inSecondChanceMenu = true;
 
@@ -559,8 +601,18 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             updateHighScore(score);
         }
         unlockAchievements();
+        Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+        tracker.setScreenName("Loss Menu");
+        tracker.send(new HitBuilders.ScreenViewBuilder().build());
+        tracker.send(new HitBuilders.EventBuilder()
+                .setCategory("Game")
+                .setAction("Finished Game")
+                .setNonInteraction(true).setValue(score)
+                .build());
+
         inLossMenu = true;
         animatingLoss = true;
+        scheduledEndGame = false;
         timeOfLoss = System.currentTimeMillis();
         loseScoreRectangle = new RoundedRectangle();
         loseScoreRectangle.setCenter(width/4, height/2, 0);
@@ -888,6 +940,9 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     }
 
     private void triggerRestart() {
+        Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+        tracker.setScreenName("Main Menu");
+        tracker.send(new HitBuilders.ScreenViewBuilder().build());
         hadSecondChance = false;
         inSecondChanceMenu = false;
         scheduledRestart = false;
@@ -928,9 +983,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     AdColonyVideoAd ad = new AdColonyVideoAd(MainActivity.interstitial_zone_id);
                     ad.show();
                 } else {
-                    if (UnityAds.setZone("video") && UnityAds.canShow() )
-                    {
-                        UnityAds.show();
+                    try {
+                        if (UnityAds.setZone("video") && UnityAds.canShow()) {
+                            UnityAds.show();
+                        }
+                    } catch (IllegalStateException e) {
+                        Log.e("Transverse", e.getMessage());
                     }
                 }
                 gamesPlayedSinceAd = 0;
@@ -943,6 +1001,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     public void onDrawFrame() {
         if (scheduledRestart) {
             triggerRestart();
+        }
+        if (scheduledEndGame) {
+            finishGame();
+        }
+        if (scheduledSecondChance) {
+            createSecondChance();
         }
         if (animatingColorChange) {
             long dt = System.currentTimeMillis() - timeOfChange;
@@ -1460,7 +1524,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     @Override
     public void onAdColonyV4VCReward(AdColonyV4VCReward adColonyV4VCReward) {
         if (adColonyV4VCReward.success() && inSecondChanceMenu) {
-            createSecondChance();
+            scheduledSecondChance = true;
         }
     }
 
@@ -1482,7 +1546,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     @Override
     public void onVideoCompleted(String itemID, boolean skipped) {
         if (!skipped && inSecondChanceMenu && UnityAds.getZone().equals("rewardedVideo")) {
-            createSecondChance();
+            scheduledSecondChance = true;
         }
     }
 
@@ -1499,5 +1563,17 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     public void setNoAds() {
         purchasedSecondChance = true;
         refreshDimensions(width, height, viewProjectionMatrix);
+    }
+
+    public void onResume() {
+        if (inLossMenu) {
+            Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+            tracker.setScreenName("Loss Menu");
+            tracker.send(new HitBuilders.ScreenViewBuilder().build());
+        } else if (!started) {
+            Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+            tracker.setScreenName("Main Menu");
+            tracker.send(new HitBuilders.ScreenViewBuilder().build());
+        }
     }
 }
