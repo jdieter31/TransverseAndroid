@@ -5,7 +5,7 @@ android {
         config {
             keyAlias 'TransverseKey'
             keyPassword 'pi314159'
-            storeFile file('F:/Google Drive/Android Studio/Key Store/TransverseKeystore.jks')
+            storeFile file('E:/Android Studio Workspace/Key Store/TransverseKeystore.jks')
             storePassword 'pi314159'
         }
     }
