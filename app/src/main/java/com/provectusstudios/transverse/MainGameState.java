@@ -30,6 +30,8 @@ import java.util.Random;
 
 public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAdsListener {
 
+    private boolean refreshing = false;
+
     //Prevent concurrency errors by changing this boolean rather than calling loss method
     private boolean scheduledLoss = false;
     private boolean scheduledRestart = false;
@@ -459,10 +461,6 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         if (currentSection != null) {
             currentSection.empty();
         }
-        scheduledSecondChance = false;
-        inSecondChanceMenu = false;
-        hadSecondChance = true;
-        startingSecondChance = true;
         rightDown = false;
         leftDown = false;
         leftPath = new Path();
@@ -498,6 +496,11 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         toRetryText.setTextSize((height/4)/3);
         toRetryText.setOrigin(width/2 - toRetryText.getWidth()/2, height/2 + verticalChange, 0);
         toRetryText.refresh();
+
+        scheduledSecondChance = false;
+        inSecondChanceMenu = false;
+        hadSecondChance = true;
+        startingSecondChance = true;
     }
 
 
@@ -505,9 +508,6 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
         tracker.setScreenName("Second Chance Menu");
         tracker.send(new HitBuilders.ScreenViewBuilder().build());
-
-        hadSecondChance = true;
-        inSecondChanceMenu = true;
 
         secondChanceBox = new RoundedRectangle();
         secondChanceBox.setWidth(2*width/3);
@@ -565,6 +565,9 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             watchVideoText.setOrigin(width / 2 - width / 3 + width / 36 + 2 * width / 9 + width / 36 + 13 * width / 72 - watchVideoText.getWidth() / 2, height / 2, 0);
             watchVideoText.refresh();
         }
+
+        hadSecondChance = true;
+        inSecondChanceMenu = true;
     }
 
     private void unlockAchievements() {
@@ -610,9 +613,6 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 .setNonInteraction(true).setValue(score)
                 .build());
 
-        inLossMenu = true;
-        animatingLoss = true;
-        scheduledEndGame = false;
         timeOfLoss = System.currentTimeMillis();
         loseScoreRectangle = new RoundedRectangle();
         loseScoreRectangle.setCenter(width/4, height/2, 0);
@@ -734,6 +734,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 1,0
         });
         loseAchievementImage.refresh();
+
+        inLossMenu = true;
+        animatingLoss = true;
+        scheduledEndGame = false;
     }
 
     private void handleSectionTouch() {
@@ -943,12 +947,6 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
         tracker.setScreenName("Main Menu");
         tracker.send(new HitBuilders.ScreenViewBuilder().build());
-        hadSecondChance = false;
-        inSecondChanceMenu = false;
-        scheduledRestart = false;
-        scheduledLoss = false;
-        inLossMenu = false;
-        started = false;
         score = 0;
         leftDown = false;
         rightDown = false;
@@ -994,11 +992,20 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 gamesPlayedSinceAd = 0;
             }
         }
+        hadSecondChance = false;
+        inSecondChanceMenu = false;
+        scheduledRestart = false;
+        scheduledLoss = false;
+        inLossMenu = false;
+        started = false;
     }
 
 
     @Override
     public void onDrawFrame() {
+        if (refreshing) {
+            return;
+        }
         if (scheduledRestart) {
             triggerRestart();
         }
@@ -1283,6 +1290,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
     @Override
     public void refreshDimensions(float width, float height, float[] viewProjectionMatrix) {
+        refreshing = true;
         if (circlesInView) {
             leftCircle = new Circle();
             leftCircle.setPrecision(360);
@@ -1467,6 +1475,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         scoreText.setFont("FFF Forward");
         scoreText.setTextSize(50f);
         refreshScore();
+        refreshing = false;
     }
 
     private void refreshScore() {
