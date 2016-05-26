@@ -88,6 +88,33 @@ public class SolidRenderType implements RenderType {
     }
 
     @Override
+    public void drawPath(Path path) {
+        GLES20.glUseProgram(Shaders.pathProgram);
+
+        int positionHandle = GLES20.glGetAttribLocation(Shaders.pathProgram, "vPosition");
+
+        // Get handle to shape's transformation matrix
+        int matrixHandle = GLES20.glGetUniformLocation(Shaders.pathProgram, "uMVPMatrix");
+
+        // Apply the projection and view transformation
+        GLES20.glUniformMatrix4fv(matrixHandle, 1, false, matrix, 0);
+
+        int colorHandle = GLES20.glGetUniformLocation(Shaders.pathProgram, "vColor");
+
+        GLES20.glUniform4f(colorHandle, red, green, blue, alpha);
+
+        int alphaHandle = GLES20.glGetAttribLocation(Shaders.pathProgram, "aAlpha");
+
+        int mSamplerLoc = GLES20.glGetUniformLocation(Shaders.pathProgram, "texture");
+
+        GLES20.glUniform1i(mSamplerLoc, Textures.particleTexture);
+
+        int pointSizeLoc = GLES20.glGetUniformLocation(Shaders.pathProgram, "pointSize");
+
+        path.draw(positionHandle, alphaHandle, pointSizeLoc);
+    }
+
+    @Override
     public void drawShape(Shape shape) {
         GLES20.glUseProgram(Shaders.solidColorProgram);
 

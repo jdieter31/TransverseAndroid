@@ -11,6 +11,7 @@ public class Shaders {
     public static int imageProgram;
     public static int solidImageProgram;
     public static int solidLineProgram;
+    public static int pathProgram;
 
     public static int vsSolidColorHandle;
     public static int fsSolidColorHandle;
@@ -20,6 +21,8 @@ public class Shaders {
     public static int fsSolidImageHandle;
     public static int vsSolidLineHandle;
     public static int fsSolidLineHandle;
+    public static int vsPathHandle;
+    public static int fsPathHandle;
 
     /* SHADER Solid
      *
@@ -28,35 +31,35 @@ public class Shaders {
      */
     public static final String vsSolidColorSource =
             "uniform mat4 uMVPMatrix;" +
-            "attribute vec4 vPosition;" +
-            "void main() {" +
-            "  gl_Position = uMVPMatrix * vPosition;" +
-            "}";
+                    "attribute vec4 vPosition;" +
+                    "void main() {" +
+                    "  gl_Position = uMVPMatrix * vPosition;" +
+                    "}";
 
     public static final String fsSolidColorSource =
             "precision mediump float;" +
-            "uniform vec4 vColor;" +
-            "void main() {" +
-            "  gl_FragColor = vColor;" +
-            "}";
+                    "uniform vec4 vColor;" +
+                    "void main() {" +
+                    "  gl_FragColor = vColor;" +
+                    "}";
 
     public static final String vsImageSource =
             "uniform mat4 uMVPMatrix;" +
-            "attribute vec4 vPosition;" +
-            "attribute vec2 a_texCoord;" +
-            "varying vec2 v_texCoord;" +
-            "void main() {" +
-            "  gl_Position = uMVPMatrix * vPosition;" +
-            "  v_texCoord = a_texCoord;" +
-            "}";
+                    "attribute vec4 vPosition;" +
+                    "attribute vec2 a_texCoord;" +
+                    "varying vec2 v_texCoord;" +
+                    "void main() {" +
+                    "  gl_Position = uMVPMatrix * vPosition;" +
+                    "  v_texCoord = a_texCoord;" +
+                    "}";
 
     public static final String fsImageSource =
             "precision mediump float;" +
-            "varying vec2 v_texCoord;" +
-            "uniform sampler2D s_texture;" +
-            "void main() {" +
-            "  gl_FragColor = texture2D( s_texture, v_texCoord );" +
-            "}";
+                    "varying vec2 v_texCoord;" +
+                    "uniform sampler2D s_texture;" +
+                    "void main() {" +
+                    "  gl_FragColor = texture2D( s_texture, v_texCoord );" +
+                    "}";
 
     public static final String vsSolidImageSource =
             "uniform mat4 uMVPMatrix;" +
@@ -69,32 +72,55 @@ public class Shaders {
                     "}";
     public static final String fsSolidImageSource =
             "precision mediump float;" +
-            "varying vec2 v_texCoord;" +
-            "uniform sampler2D s_texture;" +
-            "uniform vec4 vColor;" +
-            "void main() {" +
-            "  vec4 bitmapColor = texture2D( s_texture, v_texCoord );" +
-            "  vec4 invertedBitmapColor = vec4(1.0 - bitmapColor.x, 1.0 -bitmapColor.y, 1.0 - bitmapColor.z, bitmapColor.w);" +
-            "  gl_FragColor = invertedBitmapColor * vColor;" +
-            "}";
+                    "varying vec2 v_texCoord;" +
+                    "uniform sampler2D s_texture;" +
+                    "uniform vec4 vColor;" +
+                    "void main() {" +
+                    "  vec4 bitmapColor = texture2D( s_texture, v_texCoord );" +
+                    "  vec4 invertedBitmapColor = vec4(1.0 - bitmapColor.x, 1.0 -bitmapColor.y, 1.0 - bitmapColor.z, bitmapColor.w);" +
+                    "  gl_FragColor = invertedBitmapColor * vColor;" +
+                    "}";
 
     public static final String vsSolidLineSource =
             "uniform mat4 uMVPMatrix;" +     // A constant representing the combined model/view/projection matrix.
-            "attribute vec4 vPosition;" +     // Per-vertex position information we will pass in.
-            "attribute float aAlpha;" +
-            "varying float vAlpha;" +     // This will be passed into the fragment shader.
-            "void main() {" +     // The entry point for our vertex shader.
-            "  vAlpha = aAlpha;" +    // Pass the color through to the fragment shader.
-            "  gl_Position = uMVPMatrix * vPosition;" +    // gl_Position is a special variable used to store the final position.
-            "}";    // normalized screen coordinates.
+                    "attribute vec4 vPosition;" +     // Per-vertex position information we will pass in.
+                    "attribute float aAlpha;" +
+                    "varying float vAlpha;" +     // This will be passed into the fragment shader.
+                    "void main() {" +     // The entry point for our vertex shader.
+                    "  vAlpha = aAlpha;" +    // Pass the color through to the fragment shader.
+                    "  gl_Position = uMVPMatrix * vPosition;" +    // gl_Position is a special variable used to store the final position.
+                    "}";    // normalized screen coordinates.
 
     public static final String fsSolidLineSource =
             "precision mediump float;" +
-            "uniform vec4 vColor;" +
-            "varying float vAlpha;" +
-            "void main() {" +
-            "  gl_FragColor = vec4(vColor.x, vColor.y, vColor.z, vColor.w * vAlpha);" +
-            "}";
+                    "uniform vec4 vColor;" +
+                    "varying float vAlpha;" +
+                    "void main() {" +
+                    "  gl_FragColor = vec4(vColor.x, vColor.y, vColor.z, vColor.w * vAlpha);" +
+                    "}";
+
+    public static final String vsPathSource =
+            "attribute vec4 vPosition;" +
+                    "uniform mat4 uMVPMatrix;" +
+                    "uniform float pointSize;" +
+                    "attribute float aAlpha;" +
+                    "varying float vAlpha;" +
+                    "void main() {" +
+                    "    vAlpha = aAlpha;" +
+                    "    gl_Position = uMVPMatrix * vPosition;" +
+                    "    gl_PointSize = pointSize;" +
+                    "}";
+
+    public static final String fsPathSource =
+            "precision mediump float;" +
+                    "uniform sampler2D texture;" +
+                    "uniform vec4 vColor;" +
+                    "varying float vAlpha;" +
+                    "void main() {" +
+                    "    vec4 color = texture2D(texture, gl_PointCoord);" +
+                    "    gl_FragColor = vec4(vColor.x, vColor.y, vColor.z,color.w*vAlpha);" +
+                    "}";
+
 
     private static int loadShader(int type, String shaderCode) {
 
@@ -146,5 +172,21 @@ public class Shaders {
         GLES20.glAttachShader(solidLineProgram, vsSolidLineHandle);   // add the vertex shader to program
         GLES20.glAttachShader(solidLineProgram, fsSolidLineHandle); // add the fragment shader to program
         GLES20.glLinkProgram(solidLineProgram);                  // creates OpenGL ES program executables
+
+        vsSolidLineHandle = Shaders.loadShader(GLES20.GL_VERTEX_SHADER, vsSolidLineSource);
+        fsSolidLineHandle = Shaders.loadShader(GLES20.GL_FRAGMENT_SHADER, fsSolidLineSource);
+
+        solidLineProgram = GLES20.glCreateProgram();             // create empty OpenGL ES Program
+        GLES20.glAttachShader(solidLineProgram, vsSolidLineHandle);   // add the vertex shader to program
+        GLES20.glAttachShader(solidLineProgram, fsSolidLineHandle); // add the fragment shader to program
+        GLES20.glLinkProgram(solidLineProgram);                  // creates OpenGL ES program executables
+
+        vsPathHandle = Shaders.loadShader(GLES20.GL_VERTEX_SHADER, vsPathSource);
+        fsPathHandle = Shaders.loadShader(GLES20.GL_FRAGMENT_SHADER, fsPathSource);
+
+        pathProgram = GLES20.glCreateProgram();             // create empty OpenGL ES Program
+        GLES20.glAttachShader(pathProgram, vsPathHandle);   // add the vertex shader to program
+        GLES20.glAttachShader(pathProgram, fsPathHandle); // add the fragment shader to program
+        GLES20.glLinkProgram(pathProgram);                  // creates OpenGL ES program executables
     }
 }

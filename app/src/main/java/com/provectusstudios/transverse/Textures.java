@@ -15,6 +15,7 @@ public class Textures {
     public static int fffForwardFontTexture;
     public static int trophyTexture;
     public static int leaderboardTexture;
+    public static int particleTexture;
 
     private static int maxTextureSize;
 
@@ -30,6 +31,8 @@ public class Textures {
         trophyTexture = loadTextureFromResource(R.drawable.trophy, context);
         Log.d("Transverse", "Loading leaderboard texture");
         leaderboardTexture = loadTextureFromResource(R.drawable.leaderboard, context);
+        Log.d("Transverse", "Loading particle texture");
+        particleTexture = loadTextureFromResource(R.drawable.particle, context);
     }
 
     private static int loadTextureFromBitmap(Bitmap bitmap) {

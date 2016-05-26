@@ -1281,8 +1281,8 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 lineRenderType.drawShape(rightCircle);
             }
             lineRenderType.setMatrix(verticalTranslateMVP);
-            lineRenderType.drawAlphaShape(leftPath);
-            lineRenderType.drawAlphaShape(rightPath);
+            lineRenderType.drawPath(leftPath);
+            lineRenderType.drawPath(rightPath);
             greyRenderType.setMatrix(viewProjectionMatrix);
             greyRenderType.drawText(scoreText);
         }

@@ -10,4 +10,5 @@ public interface RenderType {
     public void drawImage(Image image);
     public void drawAlphaShape(AlphaShape line);
     public void setAlpha(float alpha);
+    public void drawPath(Path path);
 }
