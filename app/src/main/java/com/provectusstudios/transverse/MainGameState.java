@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
 
@@ -907,31 +908,6 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         return section;
     }
 
-
-    private float hueToRGB(float p, float q, float h)
-    {
-        if (h < 0) h += 1;
-
-        if (h > 1 ) h -= 1;
-
-        if (6 * h < 1)
-        {
-            return p + ((q - p) * 6 * h);
-        }
-
-        if (2 * h < 1 )
-        {
-            return  q;
-        }
-
-        if (3 * h < 2)
-        {
-            return p + ( (q - p) * 6 * ((2.0f / 3.0f) - h) );
-        }
-
-        return p;
-    }
-
     private void generateSections() {
         if (endCurrentGenerate >= verticalChange - 10) {
             Section section = getSection();
@@ -1284,7 +1260,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             lineRenderType.drawPath(leftPath);
             lineRenderType.drawPath(rightPath);
             greyRenderType.setMatrix(viewProjectionMatrix);
-            greyRenderType.drawText(scoreText);
+            defaultBackgroundRenderer.setMatrix(viewProjectionMatrix);
+            if (score < 16 ) {
+                greyRenderType.drawText(scoreText);
+            } else {
+                defaultBackgroundRenderer.drawText(scoreText);
+            }
         }
     }
 
@@ -1484,39 +1465,64 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         scoreText.setOrigin(width - 25 - scoreText.getWidth(), 3, 0);
         scoreText.refresh();
         if (score != 0) {
-            SolidRenderType renderType = new SolidRenderType();
-            float hue = random.nextFloat();
-            float luminance = random.nextFloat() * .5f;
-            float saturation = random.nextFloat();
-            float q;
-            if (luminance < 0.5)
-                q = luminance * (1 + saturation);
-            else
-                q = (luminance + saturation) - (saturation * luminance);
+            float brightness;
+            float bgBrightness;
+            float saturation;
+            float bgSaturation;
+            if (score < 8) {
+                if (random.nextFloat() < .15f) {
+                    saturation = .5f*random.nextFloat();
+                    brightness = .3f*random.nextFloat();
+                } else {
+                    saturation = 1;
+                    brightness = .55f + .3f*random.nextFloat();
+                }
+                bgSaturation = .1f;
+                bgBrightness = .95f;
+            } else if (score < 16) {
+                if (random.nextFloat() < .15f) {
+                    saturation = .5f*random.nextFloat();
+                    brightness = .3f*random.nextFloat();
+                } else {
+                    saturation = 1;
+                    brightness = .3f + .3f*random.nextFloat();
+                }
+                bgSaturation = .3f;
+                bgBrightness = .90f;
+            } else if (score < 24) {
+                bgSaturation = 1;
+                bgBrightness = .55f + .3f*random.nextFloat();
+                saturation = .1f;
+                brightness = .95f;
+            } else if (score < 32) {
+                bgSaturation = 1;
+                bgBrightness = .55f + .3f*random.nextFloat();
+                saturation = 0f;
+                brightness = 0f;
+            } else {
+                saturation = 1;
+                brightness = .55f + .3f*random.nextFloat();
+                bgSaturation = 0f;
+                bgBrightness = 0f;
+            }
 
-            float p = 2 * luminance - q;
-            float red = Math.max(0, hueToRGB(p, q, hue + (1.0f / 3.0f)));
-            float green = Math.max(0, hueToRGB(p, q, hue));
-            float blue = Math.max(0, hueToRGB(p, q, hue - (1.0f / 3.0f)));
-            renderType.setColor(red, green, blue);
+
+            float hue = random.nextFloat()*360;
+
+            SolidRenderType renderType = new SolidRenderType();
+            int renderColor = Color.HSVToColor(new float[] {hue, saturation, brightness});
+            renderType.setColor(Color.red(renderColor)/255f, Color.green(renderColor)/255f, Color.blue(renderColor)/255f);
             renderType.setAlpha(1);
             previousRenderType = currentRenderer;
             currentRenderer = renderType;
 
-            SolidRenderType backgroundRenderer = new SolidRenderType();
-            luminance = .9f;
-            saturation = .1f;
+            SolidRenderType backgroundRenderType = new SolidRenderType();
+            int backgroundRenderColor = Color.HSVToColor(new float[] {hue, bgSaturation, bgBrightness});
+            backgroundRenderType.setColor(Color.red(backgroundRenderColor)/255f, Color.green(backgroundRenderColor)/255f, Color.blue(backgroundRenderColor)/255f);
+            backgroundRenderType.setAlpha(1);
 
-            q = (luminance + saturation) - (saturation * luminance);
-
-            p = 2 * luminance - q;
-            red = Math.max(0, hueToRGB(p, q, hue + (1.0f / 3.0f)));
-            green = Math.max(0, hueToRGB(p, q, hue));
-            blue = Math.max(0, hueToRGB(p, q, hue - (1.0f / 3.0f)));
-            backgroundRenderer.setColor(red, green, blue);
-            backgroundRenderer.setAlpha(1);
-            previousBackgroundRenderType = backgroundRenderer;
-            backgroundRenderType = backgroundRenderer;
+            previousBackgroundRenderType = this.backgroundRenderType;
+            this.backgroundRenderType = backgroundRenderType;
 
             mixRenderType = new SolidRenderType();
             mixRenderType.setAlpha(1);
@@ -1524,7 +1530,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
             mixBackgroundRenderType = new SolidRenderType();
             mixBackgroundRenderType.setAlpha(1);
-            mixBackgroundRenderType.setColor(previousBackgroundRenderType.getRed(), previousBackgroundRenderType.getGreen(), previousBackgroundRenderType.getBlue());
+            mixBackgroundRenderType.setColor(previousBackgroundRenderType.getRed()/255f, previousBackgroundRenderType.getGreen()/255f, previousBackgroundRenderType.getBlue()/255f);
             animatingColorChange = true;
             timeOfChange = System.currentTimeMillis();
         }

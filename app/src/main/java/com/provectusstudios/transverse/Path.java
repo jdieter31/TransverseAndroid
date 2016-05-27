@@ -20,12 +20,15 @@ public class Path {
     private float width;
 
     List<Float> verticeList = new LinkedList<Float>();
-    List<Float> alphaList= new LinkedList<Float>();
 
-    private FloatBuffer verticeBuffer = ByteBuffer.allocateDirect(0)
+    private static final int CAPACITY = 2000;
+
+    private FloatBuffer verticeBuffer = ByteBuffer.allocateDirect(CAPACITY * 3 * 4)
             .order(ByteOrder.nativeOrder()).asFloatBuffer();
-    private FloatBuffer alphaBuffer = ByteBuffer.allocateDirect(0)
+    private FloatBuffer alphaBuffer = ByteBuffer.allocateDirect(CAPACITY * 4)
             .order(ByteOrder.nativeOrder()).asFloatBuffer();
+
+    private int bufferPosition = 0;
 
     public void setWidth(float width) {
         this.width = width;
@@ -44,34 +47,34 @@ public class Path {
             return;
         }
 
-        for (int i = 0; i < numOfPoints; i++) {
-            Point point = points.get(i);
+        int pointsRemoved = 0;
+        for (Point point : points) {
             int index = -1;
-            for (int j = 0; j < verticeList.size()/3; j++) {
-                if (verticeList.get(3*j).equals(point.x) && verticeList.get(3*j + 1).equals(point.y)) {
-                    index = j;
+            int i = 0;
+            Float prevValue = Float.NaN;
+            for (Float value : verticeList) {
+                if (prevValue.equals(point.x) && value.equals(point.y)) {
+                    index = (i-1)/3;
                     break;
                 }
+                prevValue = value;
+                i++;
             }
-            for (int k = 0; i <= index; i++) {
+            for (int k = 0; k <= index; k++) {
                 verticeList.remove(0);
                 verticeList.remove(0);
                 verticeList.remove(0);
-                alphaList.remove(0);
+                bufferPosition++;
+            }
+            pointsRemoved++;
+            if (pointsRemoved == numOfPoints) {
+                break;
             }
         }
 
         for (int i = 0; i < numOfPoints; i++) {
             points.remove(0);
         }
-
-        verticeBuffer = ByteBuffer.allocateDirect(verticeList.size() * 4)
-                .order(ByteOrder.nativeOrder()).asFloatBuffer();
-        verticeBuffer.put(toArray(verticeList)).position(0);
-
-        alphaBuffer = ByteBuffer.allocateDirect(alphaList.size() * 4)
-                .order(ByteOrder.nativeOrder()).asFloatBuffer();
-        alphaBuffer.put(toArray(alphaList)).position(0);
 
     }
 
@@ -82,48 +85,38 @@ public class Path {
             verticeList.add(points.get(0).x);
             verticeList.add(points.get(0).y);
             verticeList.add(0f);
-            alphaList.add(1f);
+            insertToBuffer(points.get(0).x, points.get(0).y, 0f, 1f);
         } else {
             insertSegment(points.size() - 2, points.size() - 1);
         }
-        verticeBuffer = ByteBuffer.allocateDirect(verticeList.size() * 4)
-                .order(ByteOrder.nativeOrder()).asFloatBuffer();
-        verticeBuffer.put(toArray(verticeList)).position(0);
 
-        alphaBuffer = ByteBuffer.allocateDirect(alphaList.size() * 4)
-                .order(ByteOrder.nativeOrder()).asFloatBuffer();
-        alphaBuffer.put(toArray(alphaList)).position(0);
 
 
     }
 
     public void setAlpha(int pointIndex, float alphaValue) {
         if (pointIndex == 0) {
-            alphaList.set(0, alphaValue);
+            alphaBuffer.put(bufferPosition, alphaValue);
         } else {
             Point prevPoint = points.get(pointIndex - 1);
-            int prevPointIndex = -1;
-            for (int j = 0; j < (verticeList.size() / 3); j++) {
-                if (verticeList.get(3 * j).equals(prevPoint.x) && verticeList.get(3 * j + 1).equals(prevPoint.y)) {
-                    prevPointIndex = j;
-                    break;
-                }
-            }
             Point point = points.get(pointIndex);
-            int curPointIndex = -1;
-            for (int j = 0; j < (verticeList.size() / 3); j++) {
-                if (verticeList.get(3 * j).equals(point.x) && verticeList.get(3 * j + 1).equals(point.y)) {
-                    pointIndex = j;
+            boolean settingAlpha = false;
+            Float prevValue = Float.NaN;
+            int i = 0;
+            for (Float value : verticeList) {
+                if (prevValue.equals(prevPoint.x) && value.equals(prevPoint.y)) {
+                    settingAlpha = true;
+                }
+                if (settingAlpha && i%3 == 0) {
+                    alphaBuffer.put(bufferPosition + i/3, alphaValue);
+                }
+                if (prevValue.equals(point.x) && value.equals(point.y)) {
                     break;
                 }
-            }
-            for (int i = (prevPointIndex + 1); i <= pointIndex; i++) {
-                alphaList.set(i, alphaValue);
+                prevValue = value;
+                i++;
             }
         }
-        alphaBuffer = ByteBuffer.allocateDirect(alphaList.size() * 4)
-                .order(ByteOrder.nativeOrder()).asFloatBuffer();
-        alphaBuffer.put(toArray(alphaList)).position(0);
     }
 
     private void insertSegment(int index1, int index2) {
@@ -133,10 +126,13 @@ public class Path {
         int numOfPoints = (int) Math.max(1, distance);
         for (int i = 1; i <= numOfPoints; i++) {
             float ratio = ((float) i)/((float) numOfPoints);
-            verticeList.add(point1.x + (point2.x - point1.x)*ratio);
-            verticeList.add(point1.y + (point2.y - point1.y)*ratio);
-            verticeList.add(0f);
-            alphaList.add(1f);
+            float x = point1.x + (point2.x - point1.x)*ratio;
+            float y = point1.y + (point2.y - point1.y)*ratio;
+            float z = 0f;
+            verticeList.add(x);
+            verticeList.add(y);
+            verticeList.add(z);
+            insertToBuffer(x, y, z, 1f);
         }
 
     }
@@ -146,29 +142,53 @@ public class Path {
     }
 
     public void refresh() {
+        Log.d("Transverse", "Refreshing");
+
+        verticeList = new LinkedList<>();
+
+        verticeBuffer = ByteBuffer.allocateDirect(CAPACITY * 3 * 4)
+                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+        alphaBuffer = ByteBuffer.allocateDirect(CAPACITY * 4)
+                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+
+        bufferPosition = 0;
+
         for (int i = 0; i < points.size(); i++) {
             if (i == 0) {
                 verticeList.add(points.get(0).x);
                 verticeList.add(points.get(0).y);
                 verticeList.add(0f);
-                alphaList.add(1f);
+                verticeList.add(1f);
+                insertToBuffer(points.get(0).x, points.get(0).y, 0f, 1f);
             } else {
                 insertSegment(i - 1, i);
             }
 
         }
-
-        verticeBuffer = ByteBuffer.allocateDirect(verticeList.size() * 4)
-                .order(ByteOrder.nativeOrder()).asFloatBuffer();
-        verticeBuffer.put(toArray(verticeList)).position(0);
-
-        alphaBuffer = ByteBuffer.allocateDirect(alphaList.size() * 4)
-                .order(ByteOrder.nativeOrder()).asFloatBuffer();
-        alphaBuffer.put(toArray(alphaList)).position(0);
-
     }
 
+    public void insertToBuffer(float x, float y, float z, float alpha) {
+        if (verticeList.size()/3 + bufferPosition > CAPACITY - 15) {
+            alphaBuffer.position(bufferPosition);
+            alphaBuffer.compact();
+            verticeBuffer.position(bufferPosition*3);
+            verticeBuffer.compact();
+            bufferPosition = 0;
+        }
+        verticeBuffer.position(bufferPosition*3 + verticeList.size());
+        verticeBuffer.put(x);
+        verticeBuffer.put(y);
+        verticeBuffer.put(z);
+        alphaBuffer.position(bufferPosition + verticeList.size()/3);
+        alphaBuffer.put(alpha);
+        verticeBuffer.position(bufferPosition*3);
+        alphaBuffer.position(bufferPosition);
+    }
+
+
     public void draw(int verticeMatrixHandle, int alphaHandle, int pointSizeLocation) {
+        verticeBuffer.position(bufferPosition * 3);
+        alphaBuffer.position(bufferPosition);
         GLES20.glVertexAttribPointer(verticeMatrixHandle, 3, GLES20.GL_FLOAT, false,
                 0, verticeBuffer);
 
@@ -182,17 +202,6 @@ public class Path {
         GLES20.glUniform1f(pointSizeLocation, width);
 
         GLES20.glDrawArrays(GLES20.GL_POINTS, 0, verticeList.size()/3);
-    }
-
-    private static float[] toArray(List<Float> list) {
-        float[] floatArray = new float[list.size()];
-        int i = 0;
-
-        for (Float f : list) {
-            floatArray[i++] = (f != null ? f : Float.NaN);
-        }
-
-        return floatArray;
     }
 }
 
