@@ -1001,11 +1001,22 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             float blue = ((300 - dt)/300f)*previousRenderType.getBlue() + (dt/300f)*currentRenderer.getBlue();
             float green = ((300 - dt)/300f)*previousRenderType.getGreen() + (dt/300f)*currentRenderer.getGreen();
             mixRenderType.setColor(red, green, blue);
-
+            if (currentRenderer.isDualColor()) {
+                float red2 = ((300 - dt)/300f)*previousRenderType.getRed2() + (dt/300f)*currentRenderer.getRed2();
+                float blue2 = ((300 - dt)/300f)*previousRenderType.getBlue2() + (dt/300f)*currentRenderer.getBlue2();
+                float green2 = ((300 - dt)/300f)*previousRenderType.getGreen2() + (dt/300f)*currentRenderer.getGreen2();
+                mixRenderType.setDualColor(red2, green2, blue2, width);
+            }
             red = ((300 - dt)/300f)*previousBackgroundRenderType.getRed() + (dt/300f)*backgroundRenderType.getRed();
             blue = ((300 - dt)/300f)*previousBackgroundRenderType.getBlue() + (dt/300f)*backgroundRenderType.getBlue();
             green = ((300 - dt)/300f)*previousBackgroundRenderType.getGreen() + (dt/300f)*backgroundRenderType.getGreen();
             mixBackgroundRenderType.setColor(red, green, blue);
+            if (backgroundRenderType.isDualColor()) {
+                float red2 = ((300 - dt)/300f)*previousBackgroundRenderType.getRed2() + (dt/300f)*backgroundRenderType.getRed2();
+                float blue2 = ((300 - dt)/300f)*previousBackgroundRenderType.getBlue2() + (dt/300f)*backgroundRenderType.getBlue2();
+                float green2 = ((300 - dt)/300f)*previousBackgroundRenderType.getGreen2() + (dt/300f)*backgroundRenderType.getGreen2();
+                mixBackgroundRenderType.setDualColor(red2, green2, blue2, width);
+            }
 
             mixBackgroundRenderType.setMatrix(viewProjectionMatrix);
             mixBackgroundRenderType.setAlpha(1);
@@ -1261,7 +1272,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             lineRenderType.drawPath(rightPath);
             greyRenderType.setMatrix(viewProjectionMatrix);
             defaultBackgroundRenderer.setMatrix(viewProjectionMatrix);
-            if (score < 16 ) {
+            if (score < 10) {
                 greyRenderType.drawText(scoreText);
             } else {
                 defaultBackgroundRenderer.drawText(scoreText);
@@ -1469,7 +1480,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             float bgBrightness;
             float saturation;
             float bgSaturation;
-            if (score < 8) {
+            if (score < 5) {
                 if (random.nextFloat() < .15f) {
                     saturation = .5f*random.nextFloat();
                     brightness = .3f*random.nextFloat();
@@ -1479,7 +1490,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 }
                 bgSaturation = .1f;
                 bgBrightness = .95f;
-            } else if (score < 16) {
+            } else if (score < 10) {
                 if (random.nextFloat() < .15f) {
                     saturation = .5f*random.nextFloat();
                     brightness = .3f*random.nextFloat();
@@ -1489,21 +1500,31 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 }
                 bgSaturation = .3f;
                 bgBrightness = .90f;
-            } else if (score < 24) {
+            } else if (score < 15) {
                 bgSaturation = 1;
                 bgBrightness = .55f + .3f*random.nextFloat();
                 saturation = .1f;
                 brightness = .95f;
-            } else if (score < 32) {
+            } else if (score < 20) {
                 bgSaturation = 1;
                 bgBrightness = .55f + .3f*random.nextFloat();
                 saturation = 0f;
                 brightness = 0f;
-            } else {
+            } else if (score < 30) {
                 saturation = 1;
                 brightness = .55f + .3f*random.nextFloat();
                 bgSaturation = 0f;
                 bgBrightness = 0f;
+            } else if (score < 40) {
+                saturation = 1;
+                brightness = 1;
+                bgSaturation = 0f;
+                bgBrightness = 0f;
+            } else {
+                saturation = 0;
+                brightness = 0;
+                bgSaturation = .7f;
+                bgBrightness = 1f;
             }
 
 
@@ -1531,6 +1552,31 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             mixBackgroundRenderType = new SolidRenderType();
             mixBackgroundRenderType.setAlpha(1);
             mixBackgroundRenderType.setColor(previousBackgroundRenderType.getRed()/255f, previousBackgroundRenderType.getGreen()/255f, previousBackgroundRenderType.getBlue()/255f);
+
+            if (score >= 30 && score < 40) {
+                float hue2;
+                do {
+                    hue2 = random.nextFloat() * 360;
+                } while (Math.min(((hue2 - hue) + 360) % 360, (-(hue2 - hue) + 360) % 360) < 130);
+                int renderColor2 = Color.HSVToColor(new float[] {hue2, saturation, brightness});
+                renderType.setDualColor(Color.red(renderColor2)/255f, Color.green(renderColor2)/255f, Color.blue(renderColor2)/255f, width);
+                if (!previousRenderType.isDualColor()) {
+                    previousRenderType.setDualColor(previousRenderType.getRed(), previousRenderType.getGreen(), previousRenderType.getBlue(), width);
+                }
+                mixRenderType.setDualColor(previousRenderType.getRed2(), previousRenderType.getGreen2(), previousRenderType.getBlue2(), width);
+            } else if (score >= 40) {
+                float hue2;
+                do {
+                    hue2 = random.nextFloat() * 360;
+                } while (Math.min(((hue2 - hue) + 360) % 360, (-(hue2 - hue) + 360) % 360) < 130);
+                int renderColor2 = Color.HSVToColor(new float[] {hue2, bgSaturation, bgBrightness});
+                backgroundRenderType.setDualColor(Color.red(renderColor2)/255f, Color.green(renderColor2)/255f, Color.blue(renderColor2)/255f, width);
+                if (!previousBackgroundRenderType.isDualColor()) {
+                    previousBackgroundRenderType.setDualColor(previousBackgroundRenderType.getRed(), previousBackgroundRenderType.getGreen(), previousBackgroundRenderType.getBlue(), width);
+                }
+                mixBackgroundRenderType.setDualColor(previousBackgroundRenderType.getRed2(), previousBackgroundRenderType.getGreen2(), previousBackgroundRenderType.getBlue2(), width);
+            }
+
             animatingColorChange = true;
             timeOfChange = System.currentTimeMillis();
         }

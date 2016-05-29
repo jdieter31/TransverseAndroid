@@ -12,6 +12,8 @@ public class Shaders {
     public static int solidImageProgram;
     public static int solidLineProgram;
     public static int pathProgram;
+    public static int dualColorProgram;
+    public static int dualColorAlphaProgram;
 
     public static int vsSolidColorHandle;
     public static int fsSolidColorHandle;
@@ -23,6 +25,10 @@ public class Shaders {
     public static int fsSolidLineHandle;
     public static int vsPathHandle;
     public static int fsPathHandle;
+    public static int vsDualColorHandle;
+    public static int fsDualColorHandle;
+    public static int vsDualColorAlphaHandle;
+    public static int fsDualColorAlphaHandle;
 
     /* SHADER Solid
      *
@@ -41,6 +47,25 @@ public class Shaders {
                     "uniform vec4 vColor;" +
                     "void main() {" +
                     "  gl_FragColor = vColor;" +
+                    "}";
+
+    public static final String vsDualColorSource =
+            "uniform mat4 uMVPMatrix;" +
+                    "varying float ratio;" +
+                    "attribute vec4 vPosition;" +
+                    "uniform float width;" +
+                    "void main() {" +
+                    "  ratio = vPosition.x/width;" +
+                    "  gl_Position = uMVPMatrix * vPosition;" +
+                    "}";
+
+    public static final String fsDualColorSource =
+            "precision highp float;" +
+                    "varying float ratio;" +
+                    "uniform vec4 vColor;" +
+                    "uniform vec4 vColor2;" +
+                    "void main() {" +
+                    "  gl_FragColor = vColor + ratio * (vColor2 - vColor);" +
                     "}";
 
     public static final String vsImageSource =
@@ -97,6 +122,30 @@ public class Shaders {
                     "varying float vAlpha;" +
                     "void main() {" +
                     "  gl_FragColor = vec4(vColor.x, vColor.y, vColor.z, vColor.w * vAlpha);" +
+                    "}";
+
+    public static final String vsDualColorAlphaSource =
+            "uniform mat4 uMVPMatrix;" +
+                    "varying float ratio;" +
+                    "attribute vec4 vPosition;" +
+                    "attribute float aAlpha;" +
+                    "uniform float width;" +
+                    "varying float vAlpha;" +
+                    "void main() {" +
+                    "  ratio = vPosition.x/width;" +
+                    "  vAlpha = aAlpha;" +
+                    "  gl_Position = uMVPMatrix * vPosition;" +
+                    "}";
+
+    public static final String fsDualColorAlphaSource =
+            "precision highp float;" +
+                    "varying float ratio;" +
+                    "uniform vec4 vColor;" +
+                    "uniform vec4 vColor2;" +
+                    "varying float vAlpha;" +
+                    "void main() {" +
+                    "  vec4 color = vColor + ratio * (vColor2 - vColor);" +
+                    "  gl_FragColor = vec4(color.x, color.y, color.z, color.w * vAlpha);" +
                     "}";
 
     public static final String vsPathSource =
@@ -188,5 +237,21 @@ public class Shaders {
         GLES20.glAttachShader(pathProgram, vsPathHandle);   // add the vertex shader to program
         GLES20.glAttachShader(pathProgram, fsPathHandle); // add the fragment shader to program
         GLES20.glLinkProgram(pathProgram);                  // creates OpenGL ES program executables
+
+        vsDualColorHandle = Shaders.loadShader(GLES20.GL_VERTEX_SHADER, vsDualColorSource);
+        fsDualColorHandle = Shaders.loadShader(GLES20.GL_FRAGMENT_SHADER, fsDualColorSource);
+
+        dualColorProgram = GLES20.glCreateProgram();             // create empty OpenGL ES Program
+        GLES20.glAttachShader(dualColorProgram, vsDualColorHandle);   // add the vertex shader to program
+        GLES20.glAttachShader(dualColorProgram, fsDualColorHandle); // add the fragment shader to program
+        GLES20.glLinkProgram(dualColorProgram);                  // creates OpenGL ES program executables
+
+        vsDualColorAlphaHandle = Shaders.loadShader(GLES20.GL_VERTEX_SHADER, vsDualColorAlphaSource);
+        fsDualColorAlphaHandle = Shaders.loadShader(GLES20.GL_FRAGMENT_SHADER, fsDualColorAlphaSource);
+
+        dualColorAlphaProgram = GLES20.glCreateProgram();             // create empty OpenGL ES Program
+        GLES20.glAttachShader(dualColorAlphaProgram, vsDualColorAlphaHandle);   // add the vertex shader to program
+        GLES20.glAttachShader(dualColorAlphaProgram, fsDualColorAlphaHandle); // add the fragment shader to program
+        GLES20.glLinkProgram(dualColorAlphaProgram);                  // creates OpenGL ES program executables
     }
 }
