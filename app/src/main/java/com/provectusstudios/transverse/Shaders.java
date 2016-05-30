@@ -60,7 +60,7 @@ public class Shaders {
                     "}";
 
     public static final String fsDualColorSource =
-            "precision highp float;" +
+            "precision lowp float;" +
                     "varying float ratio;" +
                     "uniform vec4 vColor;" +
                     "uniform vec4 vColor2;" +
@@ -138,7 +138,7 @@ public class Shaders {
                     "}";
 
     public static final String fsDualColorAlphaSource =
-            "precision highp float;" +
+            "precision lowp float;" +
                     "varying float ratio;" +
                     "uniform vec4 vColor;" +
                     "uniform vec4 vColor2;" +

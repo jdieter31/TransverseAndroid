@@ -26,6 +26,7 @@ import com.unity3d.ads.android.UnityAds;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Random;
 
 
@@ -742,6 +743,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     }
 
     private void handleSectionTouch() {
+
         //Read all position variables into stable variable so they don't change during computation
         float leftXStable = leftX;
         float leftYStable = leftY;
@@ -763,6 +765,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 }
             }
         }
+
         for (Section section : sectionsInView) {
             if (section.handleTouchMove(lastLeftX, leftXStable, lastLeftY + lastVerticalChange, leftYStable + verticalChange, false)) {
                 if (!scheduledLoss && !inSecondChanceMenu) {
@@ -770,6 +773,15 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 }
             }
         }
+
+        for (Section section : sectionsInView) {
+            if(section.handleTouchMove(lastRightX, rightXStable, lastRightY + lastVerticalChange, rightYStable + verticalChange, true)) {
+                if (!scheduledLoss && !inSecondChanceMenu) {
+                    handleLoss();
+                }
+            }
+        }
+
         if (leftYStable + verticalChange <= sectionToPass) {
             leftPast = true;
         }
@@ -784,13 +796,6 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             if (leftWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)
                     || rightWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)
                     || centerDivider.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)) {
-                if (!scheduledLoss && !inSecondChanceMenu) {
-                    handleLoss();
-                }
-            }
-        }
-        for (Section section : sectionsInView) {
-            if(section.handleTouchMove(lastRightX, rightXStable, lastRightY + lastVerticalChange, rightYStable + verticalChange, true)) {
                 if (!scheduledLoss && !inSecondChanceMenu) {
                     handleLoss();
                 }
@@ -814,39 +819,84 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             }
             sectionToPass = nextSectionToPass;
         }
-        int pointsToRemove = 0;
+
+
+        int pointsToRemove = leftPath.points.size();
         float totalDistance = 0;
         if (leftPath.points.size() > 2) {
-            Path.Point prevPoint = leftPath.getPoints().get(leftPath.points.size() - 1);
-            for (int i = leftPath.points.size() - 2; i >= 0; i--) {
-                Path.Point point = leftPath.points.get(i);
-                totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
-                if (totalDistance >= height/4) {
-                    leftPath.setAlpha(i, (height/2 - totalDistance) / (height/4));
+            int pointIndex = leftPath.getPoints().size() - 1;
+
+            Path.Point point = leftPath.getPoints().get(pointIndex);
+            float lastX = Float.NaN;
+            float lastY = Float.NaN;
+            float x = 0;
+            float y = 0;
+            float[] vertices = leftPath.getVertices();
+            for (int j = vertices.length - 1; j >= 0; j--) {
+                float vertice = vertices[j];
+                if (j % 3 == 1) {
+                    y = vertice;
+                } else if (j % 3 == 0) {
+                    x = vertice;
+                    if (!Float.isNaN(lastX)) {
+                        totalDistance += Math.sqrt(Math.pow(x - lastX, 2) + Math.pow(y - lastY, 2));
+                        if (totalDistance >= height/4) {
+                            leftPath.setAlphaVertice(j, (height/2 - totalDistance) / (height/4));
+                        }
+                    }
+                    if (x == point.x && y == point.y) {
+                        pointsToRemove--;
+                        if (pointIndex != 0) {
+                            pointIndex--;
+                            point = leftPath.getPoints().get(pointIndex);
+                        }
+                    }
+                    if (totalDistance >= height/2) {
+                        break;
+                    }
+                    lastX = x;
+                    lastY = y;
                 }
-                if (totalDistance >= height/2) {
-                    pointsToRemove = i + 1;
-                    break;
-                }
-                prevPoint = point;
             }
             leftPath.removeBottomPoints(pointsToRemove);
         }
-        pointsToRemove = 0;
+        pointsToRemove = rightPath.getPoints().size();
         totalDistance = 0;
         if (rightPath.points.size() > 2) {
-            Path.Point prevPoint = rightPath.getPoints().get(rightPath.points.size() - 1);
-            for (int i = rightPath.points.size() - 2; i >= 0; i--) {
-                Path.Point point = rightPath.points.get(i);
-                totalDistance += Math.sqrt(Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2));
-                if (totalDistance >= height/4) {
-                    rightPath.setAlpha(i, (height/2 - totalDistance) / (height/4));
+
+            int pointIndex = rightPath.getPoints().size() - 1;
+
+            Path.Point point = rightPath.getPoints().get(pointIndex);
+            float lastX = Float.NaN;
+            float lastY = Float.NaN;
+            float x = 0;
+            float y = 0;
+            float[] vertices = rightPath.getVertices();
+            for (int j = vertices.length - 1; j >= 0; j--) {
+                float vertice = vertices[j];
+                if (j % 3 == 1) {
+                    y = vertice;
+                } else if (j % 3 == 0) {
+                    x = vertice;
+                    if (!Float.isNaN(lastX)) {
+                        totalDistance += Math.sqrt(Math.pow(x - lastX, 2) + Math.pow(y - lastY, 2));
+                        if (totalDistance >= height/4) {
+                            rightPath.setAlphaVertice(j, (height/2 - totalDistance) / (height/4));
+                        }
+                    }
+                    if (x == point.x && y == point.y) {
+                        pointsToRemove--;
+                        if (pointIndex != 0) {
+                            pointIndex--;
+                            point = rightPath.getPoints().get(pointIndex);
+                        }
+                    }
+                    if (totalDistance >= height/2) {
+                        break;
+                    }
+                    lastX = x;
+                    lastY = y;
                 }
-                if (totalDistance >= height/2) {
-                    pointsToRemove = i + 1;
-                    break;
-                }
-                prevPoint = point;
             }
             rightPath.removeBottomPoints(pointsToRemove);
         }
