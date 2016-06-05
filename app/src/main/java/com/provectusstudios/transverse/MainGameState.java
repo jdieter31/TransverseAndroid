@@ -38,6 +38,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     private boolean scheduledRestart = false;
     private boolean scheduledEndGame = false;
     private boolean scheduledSecondChance = false;
+    private boolean scheduledControlSwitch = false;
 
     private static String LEADERBOARD_ID = "CgkIjb-hrowBEAIQAQ";
 
@@ -174,6 +175,28 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     private RoundedRectangle achievementBox;
     private Image achievementImage;
 
+    private RoundedRectangle switchControlSchemeBox;
+    private Text switchControlsText;
+
+    private Rectangle rightDragRectangle;
+    private Rectangle leftDragRectangle;
+
+    private Text leftArrowsLeftText;
+    private Text leftArrowsRightText;
+    private Text rightArrowsLeftText;
+    private Text rightArrowsRightText;
+
+    private Circle outerDragRightCircle;
+    private Circle outerDragLeftCircle;
+
+    private Circle dragRightCircle;
+    private Circle dragLeftCircle;
+
+    private Rectangle dragInfoBox = new Rectangle();
+    private Text dragAndHoldOnBothSidesToStart;
+
+    private float dragOffset = 0;
+
     private boolean purchasedSecondChance = false;
 
     private RoundedRectangle purchaseSecondChanceBox;
@@ -202,6 +225,8 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     private static final int initialAds = 2;
     private static final int gamesPerAd = 5;
 
+    private boolean dragControlScheme = false;
+    private boolean showIndicator = false;
 
     public MainGameState(MainRenderer mainRenderer) {
 
@@ -218,6 +243,9 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
         this.mainRenderer = mainRenderer;
         readHighScore();
+        SharedPreferences pref = ((Activity) mainRenderer.getContext()).getPreferences(Context.MODE_PRIVATE);
+        dragControlScheme = pref.getBoolean("dragControlScheme", false);
+        showIndicator = pref.getBoolean("showIndicator", false);
         greyRenderType = new SolidRenderType();
         greyRenderType.setAlpha(1);
         greyRenderType.setColor(.4f, .4f, .4f);
@@ -263,30 +291,21 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 float dpX = x/density;
                 float dpY = y/density;
                 if (!started) {
-                    if (!rightDown && rightCircle.containsPoint(dpX, dpY)) {
+                    if (!dragControlScheme && !rightDown && rightCircle.containsPoint(dpX, dpY)) {
                         rightDown = true;
                         rightPointer = pointerID;
                         rightX = dpX;
                         rightY = dpY;
                         lastRightX = rightX;
                         lastRightY = rightY;
-                    }
-                    if (!leftDown && leftCircle.containsPoint(dpX, dpY)) {
+                    } else if (!dragControlScheme && !leftDown && leftCircle.containsPoint(dpX, dpY)) {
                         leftX = dpX;
                         leftY = dpY;
                         lastLeftX = leftX;
                         lastLeftY = leftY;
                         leftDown = true;
                         leftPointer = pointerID;
-                    }
-                    if (rightDown && leftDown) {
-                        Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
-                        tracker.setScreenName("Gameplay");
-                        tracker.send(new HitBuilders.ScreenViewBuilder().build());
-                        started = true;
-                        lastMoveCalc = System.currentTimeMillis();
-                    }
-                    if (leaderboardBox.containsPoint(dpX, dpY)) {
+                    } else if (leaderboardBox.containsPoint(dpX, dpY)) {
                         if (gClient != null && gClient.isConnected()) {
                             Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
                             tracker.setScreenName("Leaderboard");
@@ -294,36 +313,73 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                             ((Activity) mainRenderer.getContext()).startActivityForResult(Games.Leaderboards.getLeaderboardIntent(gClient,
                                     LEADERBOARD_ID), 0);
                         }
-                    }
-                    if (achievementBox.containsPoint(dpX, dpY)) {
+                    } else if (achievementBox.containsPoint(dpX, dpY)) {
                         Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
                         tracker.setScreenName("Achievements");
                         tracker.send(new HitBuilders.ScreenViewBuilder().build());
                         if (gClient != null && gClient.isConnected()) {
                             ((Activity) mainRenderer.getContext()).startActivityForResult(Games.Achievements.getAchievementsIntent(gClient), 0);
                         }
-                    }
-                    if (!purchasedSecondChance && purchaseSecondChanceBox != null && purchaseSecondChanceBox.containsPoint(dpX, dpY)) {
+                    } else if (switchControlSchemeBox.containsPoint(dpX, dpY)) {
+                        scheduledControlSwitch = true;
+                    } else if (!purchasedSecondChance && purchaseSecondChanceBox != null && purchaseSecondChanceBox.containsPoint(dpX, dpY)) {
                         ((MainActivity) mainRenderer.getContext()).purchaseNoAds();
+                    } else if (dragControlScheme && dpX > 15 && dpX < width/2 - 7.5f) {
+                        leftX = dpX;
+                        leftY = height/2;
+                        lastLeftX = leftX;
+                        lastLeftY = leftY;
+                        leftDown = true;
+                        leftPointer = pointerID;
+                    } else if (dragControlScheme && dpX > width/2 + 7.5f && dpX < width - 15) {
+                        rightDown = true;
+                        rightPointer = pointerID;
+                        rightX = dpX;
+                        rightY = height/2;
+                        lastRightX = rightX;
+                        lastRightY = height/2;
                     }
+
+                    if (rightDown && leftDown) {
+                        Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+                        tracker.setScreenName("Gameplay");
+                        tracker.send(new HitBuilders.ScreenViewBuilder().build());
+                        started = true;
+                        lastMoveCalc = System.currentTimeMillis();
+                    }
+
                 }
                 if (startingSecondChance) {
-                    if (!rightDown && rightSecondChanceCircle.containsPoint(dpX, dpY + verticalChange)) {
+                    if (!dragControlScheme && !rightDown && rightSecondChanceCircle.containsPoint(dpX, dpY + verticalChange)) {
                         rightDown = true;
                         rightPointer = pointerID;
                         rightX = dpX;
                         rightY = dpY;
                         lastRightX = rightX;
                         lastRightY = rightY;
-                    }
-                    if (!leftDown && leftSecondChanceCircle.containsPoint(dpX, dpY + verticalChange)) {
+                    } else if (!dragControlScheme && !leftDown && leftSecondChanceCircle.containsPoint(dpX, dpY + verticalChange)) {
                         leftX = dpX;
                         leftY = dpY;
                         lastLeftX = leftX;
                         lastLeftY = leftY;
                         leftDown = true;
                         leftPointer = pointerID;
+                    } else if (dragControlScheme && dpX > 15 && dpX < width/2 - 7.5f) {
+                        leftX = dpX;
+                        leftY = height/2;
+                        lastLeftX = leftX;
+                        lastLeftY = leftY;
+                        leftDown = true;
+                        leftPointer = pointerID;
+                    } else if (dragControlScheme && dpX > width/2 + 7.5f && dpX < width - 15) {
+                        rightDown = true;
+                        rightPointer = pointerID;
+                        rightX = dpX;
+                        rightY = height/2;
+                        lastRightX = rightX;
+                        lastRightY = height/2;
                     }
+
                     if (rightDown && leftDown) {
                         leftPath = new Path();
                         leftPath.setWidth(10f);
@@ -428,10 +484,14 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                         dpY = y/density;
                         if (pointerID == leftPointer) {
                             leftX = dpX;
-                            leftY = dpY;
+                            if (!dragControlScheme) {
+                                leftY = dpY;
+                            }
                         } else if (pointerID == rightPointer) {
                             rightX = dpX;
-                            rightY = dpY;
+                            if (!dragControlScheme) {
+                                rightY = dpY;
+                            }
                         }
                     }
                 }
@@ -444,7 +504,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         SharedPreferences pref = ((Activity) mainRenderer.getContext()).getPreferences(Context.MODE_PRIVATE);
         SharedPreferences.Editor edit = pref.edit();
         edit.putInt(mainRenderer.getContext().getString(R.string.saved_high_score), highScore);
-        edit.commit();
+        edit.apply();
     }
 
     private void handleLoss() {
@@ -461,6 +521,9 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         tracker.send(new HitBuilders.ScreenViewBuilder().build());
         if (currentSection != null) {
             currentSection.empty();
+            if (height/2 + verticalChange <= sectionToPass) {
+                sectionsInView.get(sectionsInView.indexOf(currentSection) + 1).empty();
+            }
         }
         rightDown = false;
         leftDown = false;
@@ -478,25 +541,102 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         leftSecondChanceCircle.refresh();
         rightSecondChanceCircle.refresh();
 
-        startingSecondChanceRectangle = new RoundedRectangle();
-        startingSecondChanceRectangle.setWidth(2*width/3);
-        startingSecondChanceRectangle.setCenter(width/2, height/2 + verticalChange, 0);
-        startingSecondChanceRectangle.setHeight(height/4);
-        startingSecondChanceRectangle.setCornerRadius(10f);
-        startingSecondChanceRectangle.setPrecision(60);
-        startingSecondChanceRectangle.refresh();
-        secondChanceTapAndHoldText = new Text();
-        secondChanceTapAndHoldText.setFont("FFF Forward");
-        secondChanceTapAndHoldText.setText("Tap and hold");
-        secondChanceTapAndHoldText.setTextSize((height/4)/3);
-        secondChanceTapAndHoldText.setOrigin(width/2 - secondChanceTapAndHoldText.getWidth()/2, height/2 - (height/4)/3 + verticalChange, 0);
-        secondChanceTapAndHoldText.refresh();
-        toRetryText = new Text();
-        toRetryText.setFont("FFF Forward");
-        toRetryText.setText("to continue!");
-        toRetryText.setTextSize((height/4)/3);
-        toRetryText.setOrigin(width/2 - toRetryText.getWidth()/2, height/2 + verticalChange, 0);
-        toRetryText.refresh();
+        dragLeftCircle = new Circle();
+        dragLeftCircle.setPrecision(60);
+        dragLeftCircle.setRadius(height/60);
+        dragRightCircle = new Circle();
+        dragRightCircle.setPrecision(60);
+        dragRightCircle.setRadius(height/60);
+        dragLeftCircle.setCenter(width/4, height/2 + verticalChange, 0);
+        dragRightCircle.setCenter(3*width/4, height/2 + verticalChange, 0);
+        dragLeftCircle.refresh();
+        dragRightCircle.refresh();
+
+        if (!dragControlScheme) {
+            startingSecondChanceRectangle = new RoundedRectangle();
+            startingSecondChanceRectangle.setWidth(2 * width / 3);
+            startingSecondChanceRectangle.setCenter(width / 2, height / 2 + verticalChange, 0);
+            startingSecondChanceRectangle.setHeight(height / 4);
+            startingSecondChanceRectangle.setCornerRadius(10f);
+            startingSecondChanceRectangle.setPrecision(60);
+            startingSecondChanceRectangle.refresh();
+            secondChanceTapAndHoldText = new Text();
+            secondChanceTapAndHoldText.setFont("FFF Forward");
+            secondChanceTapAndHoldText.setText("Tap and hold");
+            secondChanceTapAndHoldText.setTextSize((height / 4) / 3);
+            secondChanceTapAndHoldText.setOrigin(width / 2 - secondChanceTapAndHoldText.getWidth() / 2, height / 2 - (height / 4) / 3 + verticalChange, 0);
+            secondChanceTapAndHoldText.refresh();
+            toRetryText = new Text();
+            toRetryText.setFont("FFF Forward");
+            toRetryText.setText("to continue!");
+            toRetryText.setTextSize((height / 4) / 3);
+            toRetryText.setOrigin(width / 2 - toRetryText.getWidth() / 2, height / 2 + verticalChange, 0);
+            toRetryText.refresh();
+        } else {
+            outerDragLeftCircle = new Circle();
+            outerDragLeftCircle.setPrecision(360);
+            outerDragLeftCircle.setRadius(height/15);
+            outerDragRightCircle = new Circle();
+            outerDragRightCircle.setPrecision(360);
+            outerDragRightCircle.setRadius(height/15);
+            outerDragLeftCircle.setCenter(width/4, height/2 + verticalChange, 0);
+            outerDragRightCircle.setCenter(3*width/4, height/2 + verticalChange, 0);
+            outerDragLeftCircle.refresh();
+            outerDragRightCircle.refresh();
+            rightDragRectangle = new Rectangle();
+            rightDragRectangle.setOrigin(width/2 + 7.5f, height/2 + verticalChange, 0);
+            rightDragRectangle.setHeight(height / 8);
+            rightDragRectangle.setWidth(width/2 - 22.5f);
+            rightDragRectangle.refresh();
+            leftDragRectangle = new Rectangle();
+            leftDragRectangle.setOrigin(15f, height/2 + verticalChange, 0);
+            leftDragRectangle.setHeight(height / 8);
+            leftDragRectangle.setWidth(width/2 - 22.5f);
+            leftDragRectangle.refresh();
+
+            leftArrowsLeftText = new Text();
+            leftArrowsLeftText.setText("<<<");
+            leftArrowsLeftText.setFont("FFF Forward");
+            leftArrowsLeftText.setTextSize(height/12);
+            leftArrowsLeftText.setOrigin(15 + (width - 45)/8 - leftArrowsLeftText.getWidth()/2, 9 * height/ 16 - height/24 + verticalChange, 0);
+            leftArrowsLeftText.refresh();
+
+            leftArrowsRightText = new Text();
+            leftArrowsRightText.setText(">>>");
+            leftArrowsRightText.setFont("FFF Forward");
+            leftArrowsRightText.setTextSize(height/12);
+            leftArrowsRightText.setOrigin(15 + 3*(width - 45)/8 - leftArrowsRightText.getWidth()/2, 9 * height/ 16 - height/24 + verticalChange, 0);
+            leftArrowsRightText.refresh();
+
+            rightArrowsLeftText = new Text();
+            rightArrowsLeftText.setText("<<<");
+            rightArrowsLeftText.setFont("FFF Forward");
+            rightArrowsLeftText.setTextSize(height/12);
+            rightArrowsLeftText.setOrigin(30 + 5*(width - 45)/8 - rightArrowsLeftText.getWidth()/2, 9 * height/ 16 - height/24 + verticalChange, 0);
+            rightArrowsLeftText.refresh();
+
+            rightArrowsRightText = new Text();
+            rightArrowsRightText.setText(">>>");
+            rightArrowsRightText.setFont("FFF Forward");
+            rightArrowsRightText.setTextSize(height/12);
+            rightArrowsRightText.setOrigin(30 + 7*(width - 45)/8 - rightArrowsRightText.getWidth()/2, 9 * height/16 - height/24 + verticalChange, 0);
+            rightArrowsRightText.refresh();
+
+            dragInfoBox = new Rectangle();
+            dragInfoBox.setOrigin(15, height/2 - height/12 - height/11 + verticalChange, 0);
+            dragInfoBox.setWidth(width - 30);
+            dragInfoBox.setHeight(height/12);
+            dragInfoBox.refresh();
+
+            dragAndHoldOnBothSidesToStart = new Text();
+            dragAndHoldOnBothSidesToStart.setText("Drag and hold on both sides to continue!");
+            dragAndHoldOnBothSidesToStart.setFont("FFF Forward");
+            dragAndHoldOnBothSidesToStart.setTextSize(height/16);
+            dragAndHoldOnBothSidesToStart.setOrigin(width/2 - dragAndHoldOnBothSidesToStart.getWidth()/2, height/2 - height/11 - height/24 - height/32 + verticalChange, 0);
+            dragAndHoldOnBothSidesToStart.refresh();
+
+            dragOffset = verticalChange;
+        }
 
         scheduledSecondChance = false;
         inSecondChanceMenu = false;
@@ -761,6 +901,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     || centerDivider.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftXStable, leftYStable + verticalChange)) {
                 if (!scheduledLoss && !inSecondChanceMenu) {
                     handleLoss();
+                    return;
                 }
             }
         }
@@ -769,6 +910,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             if (section.handleTouchMove(lastLeftX, leftXStable, lastLeftY + lastVerticalChange, leftYStable + verticalChange, false)) {
                 if (!scheduledLoss && !inSecondChanceMenu) {
                     handleLoss();
+                    return;
                 }
             }
         }
@@ -777,6 +919,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             if(section.handleTouchMove(lastRightX, rightXStable, lastRightY + lastVerticalChange, rightYStable + verticalChange, true)) {
                 if (!scheduledLoss && !inSecondChanceMenu) {
                     handleLoss();
+                    return;
                 }
             }
         }
@@ -797,6 +940,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     || centerDivider.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)) {
                 if (!scheduledLoss && !inSecondChanceMenu) {
                     handleLoss();
+                    return;
                 }
             }
         }
@@ -910,6 +1054,9 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         }
         float newVerticalChange = (((float) dt) / 1000f) * speed;
         verticalChange -= newVerticalChange;
+        if (dragControlScheme) {
+            leftY = rightY = Math.min(height/2 - verticalChange + dragOffset, 17 * height / 24);
+        }
         Matrix.translateM(verticalTranslate, 0, 0, newVerticalChange, 0);
         Iterator<Section> sectionIterator = sectionsInView.iterator();
         while (sectionIterator.hasNext()) {
@@ -990,6 +1137,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         sectionToPass = 0;
         nextSectionToPass = 0;
         endCurrentGenerate = 0;
+        dragOffset = 0;
         currentRenderer = greyRenderType;
         backgroundRenderType = defaultBackgroundRenderer;
         Matrix.setIdentityM(verticalTranslate, 0);
@@ -1040,6 +1188,24 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         if (scheduledSecondChance) {
             createSecondChance();
         }
+        if (scheduledControlSwitch) {
+            if (showIndicator && dragControlScheme) {
+                showIndicator = true;
+                dragControlScheme = false;
+            } else if (showIndicator) {
+                showIndicator = false;
+            } else {
+                dragControlScheme = true;
+                showIndicator = true;
+            }
+            SharedPreferences pref = ((Activity) mainRenderer.getContext()).getPreferences(Context.MODE_PRIVATE);
+            SharedPreferences.Editor edit = pref.edit();
+            edit.putBoolean("showIndicator", showIndicator);
+            edit.putBoolean("dragControlScheme", dragControlScheme);
+            edit.apply();
+            refreshDimensions(width, height, viewProjectionMatrix);
+            scheduledControlSwitch = false;
+        }
         if (animatingColorChange) {
             long dt = System.currentTimeMillis() - timeOfChange;
             if (dt > 300) {
@@ -1085,11 +1251,26 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             greyRenderType.drawShape(leftWall);
             greyRenderType.drawShape(centerDivider);
             greyRenderType.drawShape(rightWall);
-            titleRenderType.drawShape(tapToStartRectangle);
+
+            if (!dragControlScheme) {
+                titleRenderType.drawShape(tapToStartRectangle);
+                backgroundRenderType.drawText(tapAndHoldText);
+                backgroundRenderType.drawText(toStartText);
+            } else {
+                titleRenderType.drawShape(leftDragRectangle);
+                titleRenderType.drawShape(rightDragRectangle);
+                titleRenderType.drawShape(dragInfoBox);
+                backgroundRenderType.drawText(dragAndHoldOnBothSidesToStart);
+                greyRenderType.drawShape(outerDragLeftCircle);
+                greyRenderType.drawShape(outerDragRightCircle);
+                backgroundRenderType.drawText(leftArrowsLeftText);
+                backgroundRenderType.drawText(leftArrowsRightText);
+                backgroundRenderType.drawText(rightArrowsLeftText);
+                backgroundRenderType.drawText(rightArrowsRightText);
+            }
+
             titleRenderType.drawShape(titleRectangle);
             backgroundRenderType.drawText(titleText);
-            backgroundRenderType.drawText(tapAndHoldText);
-            backgroundRenderType.drawText(toStartText);
 
             titleRenderType.drawShape(titleHighScoreBox);
             backgroundRenderType.drawText(titleHighScoreText);
@@ -1100,21 +1281,43 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             titleRenderType.drawShape(achievementBox);
             backgroundRenderType.drawImage(achievementImage);
 
+            titleRenderType.drawShape(switchControlSchemeBox);
+            backgroundRenderType.drawText(switchControlsText);
+
+
             if (!purchasedSecondChance) {
                 titleRenderType.drawShape(purchaseSecondChanceBox);
                 backgroundRenderType.drawText(buyNoAdsAndText);
                 backgroundRenderType.drawText(secondChancesText);
             }
 
-            if (leftDown) {
-                lineRenderType.drawShape(leftCircle);
+            if (dragControlScheme) {
+                if (leftDown) {
+                    lineRenderType.drawShape(dragLeftCircle);
+                } else {
+                    backgroundRenderType.drawShape(dragLeftCircle);
+                }
+                if (rightDown) {
+                    lineRenderType.drawShape(dragRightCircle);
+                } else {
+                    backgroundRenderType.drawShape(dragRightCircle);
+                }
             } else {
-                greyRenderType.drawShape(leftCircle);
+                if (leftDown) {
+                    lineRenderType.drawShape(leftCircle);
+                } else {
+                    greyRenderType.drawShape(leftCircle);
+                }
+                if (rightDown) {
+                    lineRenderType.drawShape(rightCircle);
+                } else {
+                    greyRenderType.drawShape(rightCircle);
+                }
             }
-            if (rightDown) {
-                lineRenderType.drawShape(rightCircle);
-            } else {
-                greyRenderType.drawShape(rightCircle);
+
+            if (!dragControlScheme && showIndicator) {
+                lineRenderType.drawShape(dragLeftCircle);
+                lineRenderType.drawShape(dragRightCircle);
             }
         } else if (inLossMenu || inSecondChanceMenu) {
             float[] verticalTranslateMVP = new float[16];
@@ -1183,6 +1386,13 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 if (!purchasedSecondChance) {
                     defaultBackgroundRenderer.drawText(watchVideoText);
                 }
+                greyRenderType.setMatrix(viewProjectionMatrix);
+                defaultBackgroundRenderer.setMatrix(viewProjectionMatrix);
+                if (score < 10) {
+                    greyRenderType.drawText(scoreText);
+                } else {
+                    defaultBackgroundRenderer.drawText(scoreText);
+                }
             }
         } else if (startingSecondChance) {
             float[] verticalTranslateMVP = new float[16];
@@ -1202,19 +1412,55 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             for (Section section : sectionsInView) {
                 section.draw(verticalTranslateMVP, currentRenderer);
             }
-            titleRenderType.drawShape(startingSecondChanceRectangle);
-            defaultBackgroundRenderer.drawText(secondChanceTapAndHoldText);
-            defaultBackgroundRenderer.drawText(toRetryText);
-
-            if (leftDown) {
-                lineRenderType.drawShape(leftSecondChanceCircle);
+            if (!dragControlScheme) {
+                titleRenderType.drawShape(startingSecondChanceRectangle);
+                defaultBackgroundRenderer.drawText(secondChanceTapAndHoldText);
+                defaultBackgroundRenderer.drawText(toRetryText);
+                if (leftDown) {
+                    lineRenderType.drawShape(leftSecondChanceCircle);
+                } else {
+                    greyRenderType.drawShape(leftSecondChanceCircle);
+                }
+                if (rightDown) {
+                    lineRenderType.drawShape(rightSecondChanceCircle);
+                } else {
+                    greyRenderType.drawShape(rightSecondChanceCircle);
+                }
             } else {
-                greyRenderType.drawShape(leftSecondChanceCircle);
+                titleRenderType.drawShape(leftDragRectangle);
+                titleRenderType.drawShape(rightDragRectangle);
+                titleRenderType.drawShape(dragInfoBox);
+                defaultBackgroundRenderer.drawText(dragAndHoldOnBothSidesToStart);
+                greyRenderType.drawShape(outerDragLeftCircle);
+                greyRenderType.drawShape(outerDragRightCircle);
+                defaultBackgroundRenderer.drawText(leftArrowsLeftText);
+                defaultBackgroundRenderer.drawText(leftArrowsRightText);
+                defaultBackgroundRenderer.drawText(rightArrowsLeftText);
+                defaultBackgroundRenderer.drawText(rightArrowsRightText);
+                if (leftDown) {
+                    lineRenderType.drawShape(dragLeftCircle);
+                } else {
+                    defaultBackgroundRenderer.drawShape(dragLeftCircle);
+                }
+                if (rightDown) {
+                    lineRenderType.drawShape(dragRightCircle);
+                } else {
+                    defaultBackgroundRenderer.drawShape(dragRightCircle);
+                }
             }
-            if (rightDown) {
-                lineRenderType.drawShape(rightSecondChanceCircle);
+
+
+            if (!dragControlScheme && showIndicator) {
+                lineRenderType.drawShape(dragLeftCircle);
+                lineRenderType.drawShape(dragRightCircle);
+            }
+
+            greyRenderType.setMatrix(viewProjectionMatrix);
+            defaultBackgroundRenderer.setMatrix(viewProjectionMatrix);
+            if (score < 10) {
+                greyRenderType.drawText(scoreText);
             } else {
-                greyRenderType.drawShape(rightSecondChanceCircle);
+                defaultBackgroundRenderer.drawText(scoreText);
             }
         } else {
             if (scheduledLoss) {
@@ -1258,13 +1504,29 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     titleRenderType.setAlpha(titleAlpha);
                     titleRenderType.drawShape(titleRectangle);
                     defaultBackgroundRenderer.drawText(titleText);
-                    titleRenderType.drawShape(tapToStartRectangle);
-                    defaultBackgroundRenderer.drawText(tapAndHoldText);
-                    defaultBackgroundRenderer.drawText(toStartText);
+                    if (!dragControlScheme) {
+                        titleRenderType.drawShape(tapToStartRectangle);
+                        defaultBackgroundRenderer.drawText(tapAndHoldText);
+                        defaultBackgroundRenderer.drawText(toStartText);
+                    } else {
+                        titleRenderType.drawShape(leftDragRectangle);
+                        titleRenderType.drawShape(rightDragRectangle);
+                        titleRenderType.drawShape(dragInfoBox);
+                        defaultBackgroundRenderer.drawText(dragAndHoldOnBothSidesToStart);
+                        greyRenderType.drawShape(outerDragLeftCircle);
+                        greyRenderType.drawShape(outerDragRightCircle);
+                        defaultBackgroundRenderer.drawText(leftArrowsLeftText);
+                        defaultBackgroundRenderer.drawText(leftArrowsRightText);
+                        defaultBackgroundRenderer.drawText(rightArrowsLeftText);
+                        defaultBackgroundRenderer.drawText(rightArrowsRightText);
+                    }
+
                     titleRenderType.drawShape(titleHighScoreBox);
                     defaultBackgroundRenderer.drawText(titleHighScoreText);
                     titleRenderType.drawShape(leaderboardBox);
                     titleRenderType.drawShape(achievementBox);
+                    titleRenderType.drawShape(switchControlSchemeBox);
+                    defaultBackgroundRenderer.drawText(switchControlsText);
                     defaultBackgroundRenderer.drawImage(achievementImage);
                     defaultBackgroundRenderer.drawImage(leaderboardImage);
 
@@ -1283,19 +1545,36 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     }
                     lastTitleCalculation = time;
                     titleRenderType.setAlpha(titleAlpha);
+                    defaultBackgroundRenderer.setAlpha(titleAlpha);
+
                     titleRenderType.drawShape(titleRectangle);
-                    titleRenderType.drawShape(tapToStartRectangle);
                     titleRenderType.drawShape(titleHighScoreBox);
                     titleRenderType.drawShape(leaderboardBox);
                     titleRenderType.drawShape(achievementBox);
-                    defaultBackgroundRenderer.setAlpha(titleAlpha);
+                    titleRenderType.drawShape(switchControlSchemeBox);
+
+                    if (!dragControlScheme) {
+                        titleRenderType.drawShape(tapToStartRectangle);
+                        defaultBackgroundRenderer.drawText(tapAndHoldText);
+                        defaultBackgroundRenderer.drawText(toStartText);
+                    } else {
+                        titleRenderType.drawShape(leftDragRectangle);
+                        titleRenderType.drawShape(rightDragRectangle);
+                        titleRenderType.drawShape(dragInfoBox);
+                        defaultBackgroundRenderer.drawText(dragAndHoldOnBothSidesToStart);
+                        greyRenderType.drawShape(outerDragLeftCircle);
+                        greyRenderType.drawShape(outerDragRightCircle);
+                        defaultBackgroundRenderer.drawText(leftArrowsLeftText);
+                        defaultBackgroundRenderer.drawText(leftArrowsRightText);
+                        defaultBackgroundRenderer.drawText(rightArrowsLeftText);
+                        defaultBackgroundRenderer.drawText(rightArrowsRightText);
+                    }
+
                     defaultBackgroundRenderer.drawText(titleText);
-                    defaultBackgroundRenderer.drawText(tapAndHoldText);
-                    defaultBackgroundRenderer.drawText(toStartText);
                     defaultBackgroundRenderer.drawText(titleHighScoreText);
                     defaultBackgroundRenderer.drawImage(achievementImage);
                     defaultBackgroundRenderer.drawImage(leaderboardImage);
-
+                    defaultBackgroundRenderer.drawText(switchControlsText);
                     if (!purchasedSecondChance) {
                         titleRenderType.drawShape(purchaseSecondChanceBox);
                         defaultBackgroundRenderer.drawText(buyNoAdsAndText);
@@ -1312,10 +1591,27 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     }
                 }
             }
-            if (circlesInView) {
+            if (circlesInView && !dragControlScheme) {
                 lineRenderType.drawShape(leftCircle);
                 lineRenderType.drawShape(rightCircle);
             }
+
+            if (showIndicator) {
+                float indicatorY;
+                if (dragControlScheme) {
+                    indicatorY = Math.min(height/2 - verticalChange + dragOffset, 17*height/24);
+                } else {
+                    indicatorY = height/2;
+                }
+                dragLeftCircle.setCenter(leftX, indicatorY, 0);
+                dragLeftCircle.refresh();
+                dragRightCircle.setCenter(rightX, indicatorY, 0);
+                dragRightCircle.refresh();
+                lineRenderType.setMatrix(viewProjectionMatrix);
+                lineRenderType.drawShape(dragLeftCircle);
+                lineRenderType.drawShape(dragRightCircle);
+            }
+
             lineRenderType.setMatrix(verticalTranslateMVP);
             lineRenderType.drawPath(leftPath);
             lineRenderType.drawPath(rightPath);
@@ -1332,7 +1628,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     @Override
     public void refreshDimensions(float width, float height, float[] viewProjectionMatrix) {
         refreshing = true;
-        if (circlesInView) {
+        if (circlesInView && !dragControlScheme) {
             leftCircle = new Circle();
             leftCircle.setPrecision(360);
             leftCircle.setRadius(height/10);
@@ -1378,31 +1674,107 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             titleText.setTextSize(titleRectangleHeight - 10);
             titleText.setOrigin(width/2 - titleText.getWidth()/2, titleRectangleY - (titleRectangleHeight - 10)/2, 0);
             titleText.refresh();
-            tapToStartRectangle = new RoundedRectangle();
-            tapToStartRectangle.setWidth(titleRectangleWidth);
-            tapToStartRectangle.setCenter(width/2, height/2, 0);
-            tapToStartRectangle.setHeight(height/4);
-            tapToStartRectangle.setCornerRadius(10f);
-            tapToStartRectangle.setPrecision(60);
-            tapToStartRectangle.refresh();
-            tapAndHoldText = new Text();
-            tapAndHoldText.setFont("FFF Forward");
-            tapAndHoldText.setText("Tap and hold");
-            tapAndHoldText.setTextSize((height/4)/3);
-            tapAndHoldText.setOrigin(width/2 - tapAndHoldText.getWidth()/2, height/2 - (height/4)/3, 0);
-            tapAndHoldText.refresh();
-            toStartText = new Text();
-            toStartText.setFont("FFF Forward");
-            toStartText.setText("to start!");
-            toStartText.setTextSize((height/4)/3);
-            toStartText.setOrigin(width/2 - toStartText.getWidth()/2, height/2, 0);
-            toStartText.refresh();
+
+
+            dragLeftCircle = new Circle();
+            dragLeftCircle.setPrecision(60);
+            dragLeftCircle.setRadius(height/60);
+            dragRightCircle = new Circle();
+            dragRightCircle.setPrecision(60);
+            dragRightCircle.setRadius(height/60);
+            dragLeftCircle.setCenter(width/4, height/2, 0);
+            dragRightCircle.setCenter(3*width/4, height/2, 0);
+            dragLeftCircle.refresh();
+            dragRightCircle.refresh();
+            if (!dragControlScheme) {
+                tapToStartRectangle = new RoundedRectangle();
+                tapToStartRectangle.setWidth(titleRectangleWidth);
+                tapToStartRectangle.setCenter(width / 2, height / 2, 0);
+                tapToStartRectangle.setHeight(height / 4);
+                tapToStartRectangle.setCornerRadius(10f);
+                tapToStartRectangle.setPrecision(60);
+                tapToStartRectangle.refresh();
+                tapAndHoldText = new Text();
+                tapAndHoldText.setFont("FFF Forward");
+                tapAndHoldText.setText("Tap and hold");
+                tapAndHoldText.setTextSize((height / 4) / 3);
+                tapAndHoldText.setOrigin(width / 2 - tapAndHoldText.getWidth() / 2, height / 2 - (height / 4) / 3, 0);
+                tapAndHoldText.refresh();
+                toStartText = new Text();
+                toStartText.setFont("FFF Forward");
+                toStartText.setText("to start!");
+                toStartText.setTextSize((height / 4) / 3);
+                toStartText.setOrigin(width / 2 - toStartText.getWidth() / 2, height / 2, 0);
+                toStartText.refresh();
+            } else {
+                outerDragLeftCircle = new Circle();
+                outerDragLeftCircle.setPrecision(360);
+                outerDragLeftCircle.setRadius(height/15);
+                outerDragRightCircle = new Circle();
+                outerDragRightCircle.setPrecision(360);
+                outerDragRightCircle.setRadius(height/15);
+                outerDragLeftCircle.setCenter(width/4, height/2, 0);
+                outerDragRightCircle.setCenter(3*width/4, height/2, 0);
+                outerDragLeftCircle.refresh();
+                outerDragRightCircle.refresh();
+                rightDragRectangle = new Rectangle();
+                rightDragRectangle.setOrigin(width/2 + 7.5f, height/2, 0);
+                rightDragRectangle.setHeight(height / 8);
+                rightDragRectangle.setWidth(width/2 - 22.5f);
+                rightDragRectangle.refresh();
+                leftDragRectangle = new Rectangle();
+                leftDragRectangle.setOrigin(15f, height/2, 0);
+                leftDragRectangle.setHeight(height / 8);
+                leftDragRectangle.setWidth(width/2 - 22.5f);
+                leftDragRectangle.refresh();
+
+                leftArrowsLeftText = new Text();
+                leftArrowsLeftText.setText("<<<");
+                leftArrowsLeftText.setFont("FFF Forward");
+                leftArrowsLeftText.setTextSize(height/12);
+                leftArrowsLeftText.setOrigin(15 + (width - 45)/8 - leftArrowsLeftText.getWidth()/2, 9 * height/ 16 - height/24, 0);
+                leftArrowsLeftText.refresh();
+
+                leftArrowsRightText = new Text();
+                leftArrowsRightText.setText(">>>");
+                leftArrowsRightText.setFont("FFF Forward");
+                leftArrowsRightText.setTextSize(height/12);
+                leftArrowsRightText.setOrigin(15 + 3*(width - 45)/8 - leftArrowsRightText.getWidth()/2, 9 * height/ 16 - height/24, 0);
+                leftArrowsRightText.refresh();
+
+                rightArrowsLeftText = new Text();
+                rightArrowsLeftText.setText("<<<");
+                rightArrowsLeftText.setFont("FFF Forward");
+                rightArrowsLeftText.setTextSize(height/12);
+                rightArrowsLeftText.setOrigin(30 + 5*(width - 45)/8 - rightArrowsLeftText.getWidth()/2, 9 * height/ 16 - height/24, 0);
+                rightArrowsLeftText.refresh();
+
+                rightArrowsRightText = new Text();
+                rightArrowsRightText.setText(">>>");
+                rightArrowsRightText.setFont("FFF Forward");
+                rightArrowsRightText.setTextSize(height/12);
+                rightArrowsRightText.setOrigin(30 + 7*(width - 45)/8 - rightArrowsRightText.getWidth()/2, 9 * height/16 - height/24, 0);
+                rightArrowsRightText.refresh();
+
+                dragInfoBox = new Rectangle();
+                dragInfoBox.setOrigin(15, height/2 - height/12 - height/11, 0);
+                dragInfoBox.setWidth(width - 30);
+                dragInfoBox.setHeight(height/12);
+                dragInfoBox.refresh();
+
+                dragAndHoldOnBothSidesToStart = new Text();
+                dragAndHoldOnBothSidesToStart.setText("Drag and hold on both sides to start!");
+                dragAndHoldOnBothSidesToStart.setFont("FFF Forward");
+                dragAndHoldOnBothSidesToStart.setTextSize(height/16);
+                dragAndHoldOnBothSidesToStart.setOrigin(width/2 - dragAndHoldOnBothSidesToStart.getWidth()/2, height/2 - height/11 - height/24 - height/32, 0);
+                dragAndHoldOnBothSidesToStart.refresh();
+            }
 
             float bottomButtonHeight = height/6;
 
             titleHighScoreBox = new RoundedRectangle();
             titleHighScoreBox.setHeight(bottomButtonHeight);
-            titleHighScoreBox.setCenter(width/2, 4*height/5, 0);
+            titleHighScoreBox.setCenter(width/2, 3*height/4, 0);
             titleHighScoreBox.setCornerRadius(10f);
             titleHighScoreBox.setWidth(11*width/32);
             titleHighScoreBox.setPrecision(60);
@@ -1412,8 +1784,24 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             titleHighScoreText.setFont("FFF Forward");
             titleHighScoreText.setText("Best: " + highScore);
             titleHighScoreText.setTextSize((2*height/3)/5);
-            titleHighScoreText.setOrigin(width/2 - titleHighScoreText.getWidth()/2, 4*height/5 - (2*height/3)/10, 0);
+            titleHighScoreText.setOrigin(width/2 - titleHighScoreText.getWidth()/2, 3*height/4 - (2*height/3)/10, 0);
             titleHighScoreText.refresh();
+
+            switchControlSchemeBox = new RoundedRectangle();
+            switchControlSchemeBox.setHeight(height/10);
+            switchControlSchemeBox.setCenter(width/2, 11 * height / 12
+                    , 0);
+            switchControlSchemeBox.setCornerRadius(10f);
+            switchControlSchemeBox.setWidth(11 * width / 32);
+            switchControlSchemeBox.setPrecision(60);
+            switchControlSchemeBox.refresh();
+
+            switchControlsText = new Text();
+            switchControlsText.setFont("FFF Forward");
+            switchControlsText.setText("Switch Controls");
+            switchControlsText.setTextSize(height/16);
+            switchControlsText.setOrigin(width/2 - switchControlsText.getWidth()/2, 11*height/12 - height/32, 0);
+            switchControlsText.refresh();
 
             float leaderboardCenterX = width/2 - 11 * width / 64 - width / 36 - bottomButtonHeight/2;
 
@@ -1515,7 +1903,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         scoreText = new Text();
         scoreText.setFont("FFF Forward");
         scoreText.setTextSize(50f);
-        refreshScore();
+        scoreText.setText(score + "");
+        scoreText.setOrigin(width - 25 - scoreText.getWidth(), 3, 0);
+        scoreText.refresh();
+
         refreshing = false;
     }
 
@@ -1561,7 +1952,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 brightness = 0f;
             } else if (score < 30) {
                 saturation = 1;
-                brightness = .55f + .3f*random.nextFloat();
+                brightness = 1;
                 bgSaturation = 0f;
                 bgBrightness = 0f;
             } else if (score < 40) {
