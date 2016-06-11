@@ -16,6 +16,8 @@ public class Textures {
     public static int trophyTexture;
     public static int leaderboardTexture;
     public static int particleTexture;
+    public static int fbTexture;
+    public static int twitterTexture;
 
     private static int maxTextureSize;
 
@@ -33,6 +35,10 @@ public class Textures {
         leaderboardTexture = loadTextureFromResource(R.drawable.leaderboard, context);
         Log.d("Transverse", "Loading particle texture");
         particleTexture = loadTextureFromResource(R.drawable.particle, context);
+        Log.d("Transverse", "Loading fb texture");
+        fbTexture = loadTextureFromResource(R.drawable.facebook, context);
+        Log.d("Transverse", "Loading twitter texture");
+        twitterTexture = loadTextureFromResource(R.drawable.twitter, context);
     }
 
     private static int loadTextureFromBitmap(Bitmap bitmap) {

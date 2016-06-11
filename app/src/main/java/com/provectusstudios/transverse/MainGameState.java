@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.net.Uri;
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
 
@@ -228,6 +229,15 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     private boolean dragControlScheme = false;
     private boolean showIndicator = false;
 
+    private Circle fbCircle;
+    private Image fbImage;
+
+    private Circle twitterCircle;
+    private Image twitterImage;
+
+    private SolidRenderType fbRenderType;
+    private SolidRenderType twitterRenderType;
+
     public MainGameState(MainRenderer mainRenderer) {
 
         AdColony.addV4VCListener(this);
@@ -269,6 +279,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         titleRenderType = new SolidRenderType();
         titleRenderType.setColor(.204f, .553f, .686f);
         titleRenderType.setAlpha(1f);
+        fbRenderType = new SolidRenderType();
+        fbRenderType.setColor(.231f, .349f, .596f);
+        fbRenderType.setAlpha(1);
+        twitterRenderType = new SolidRenderType();
+        twitterRenderType.setColor(.333f, .675f, .933f);
+        twitterRenderType.setAlpha(1);
         currentRenderer = greyRenderType;
     }
 
@@ -324,6 +340,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                         scheduledControlSwitch = true;
                     } else if (!purchasedSecondChance && purchaseSecondChanceBox != null && purchaseSecondChanceBox.containsPoint(dpX, dpY)) {
                         ((MainActivity) mainRenderer.getContext()).purchaseNoAds();
+                    } else if (fbCircle.containsPoint(dpX, dpY)) {
+                        mainRenderer.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.facebook.com/provectusstudios")));
+                    } else if (twitterCircle.containsPoint(dpX, dpY)) {
+                        mainRenderer.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://twitter.com/provectustudios")));
                     } else if (dragControlScheme && dpX > 15 && dpX < width/2 - 7.5f) {
                         leftX = dpX;
                         leftY = height/2;
@@ -1247,6 +1267,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         if (!started) {
             greyRenderType.setMatrix(viewProjectionMatrix);
             lineRenderType.setMatrix(viewProjectionMatrix);
+            fbRenderType.setMatrix(viewProjectionMatrix);
+            fbRenderType.setAlpha(1);
+            twitterRenderType.setMatrix(viewProjectionMatrix);
+            twitterRenderType.setAlpha(1);
             titleRenderType.setAlpha(1);
             greyRenderType.drawShape(leftWall);
             greyRenderType.drawShape(centerDivider);
@@ -1271,6 +1295,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
             titleRenderType.drawShape(titleRectangle);
             backgroundRenderType.drawText(titleText);
+
+            fbRenderType.drawShape(fbCircle);
+            backgroundRenderType.drawImage(fbImage);
+
+            twitterRenderType.drawShape(twitterCircle);
+           backgroundRenderType.drawImage(twitterImage);
 
             titleRenderType.drawShape(titleHighScoreBox);
             backgroundRenderType.drawText(titleHighScoreText);
@@ -1502,8 +1532,14 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     sane = false;
                     defaultBackgroundRenderer.setAlpha(titleAlpha);
                     titleRenderType.setAlpha(titleAlpha);
+                    fbRenderType.setAlpha(titleAlpha);
+                    twitterRenderType.setAlpha(titleAlpha);
                     titleRenderType.drawShape(titleRectangle);
                     defaultBackgroundRenderer.drawText(titleText);
+                    fbRenderType.drawShape(fbCircle);
+                    defaultBackgroundRenderer.drawImage(fbImage);
+                    twitterRenderType.drawShape(twitterCircle);
+                    defaultBackgroundRenderer.drawImage(twitterImage);
                     if (!dragControlScheme) {
                         titleRenderType.drawShape(tapToStartRectangle);
                         defaultBackgroundRenderer.drawText(tapAndHoldText);
@@ -1546,8 +1582,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     lastTitleCalculation = time;
                     titleRenderType.setAlpha(titleAlpha);
                     defaultBackgroundRenderer.setAlpha(titleAlpha);
+                    fbRenderType.setAlpha(titleAlpha);
+                    twitterRenderType.setAlpha(titleAlpha);
 
                     titleRenderType.drawShape(titleRectangle);
+                    fbRenderType.drawShape(fbCircle);
+                    twitterRenderType.drawShape(twitterCircle);
                     titleRenderType.drawShape(titleHighScoreBox);
                     titleRenderType.drawShape(leaderboardBox);
                     titleRenderType.drawShape(achievementBox);
@@ -1574,6 +1614,8 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     defaultBackgroundRenderer.drawText(titleHighScoreText);
                     defaultBackgroundRenderer.drawImage(achievementImage);
                     defaultBackgroundRenderer.drawImage(leaderboardImage);
+                    defaultBackgroundRenderer.drawImage(fbImage);
+                    defaultBackgroundRenderer.drawImage(twitterImage);
                     defaultBackgroundRenderer.drawText(switchControlsText);
                     if (!purchasedSecondChance) {
                         titleRenderType.drawShape(purchaseSecondChanceBox);
@@ -1675,6 +1717,59 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             titleText.setOrigin(width/2 - titleText.getWidth()/2, titleRectangleY - (titleRectangleHeight - 10)/2, 0);
             titleText.refresh();
 
+            fbCircle = new Circle();
+            fbCircle.setCenter(width/2 + width/3 + width/20, height/5, 0);
+            fbCircle.setRadius(width/30);
+            fbCircle.setPrecision(360);
+            fbCircle.refresh();
+
+            float fbImageWidth = width/25;
+            float fbImageHeight = width/25;
+            fbImage = new Image();
+            fbImage.setTextureHandle(Textures.fbTexture);
+            fbImage.setVertices(new float[] {
+                    width/2 + width/3 + width/20 - fbImageWidth/2, height/5 - fbImageHeight/2, 0,
+                    width/2 + width/3 + width/20 - fbImageWidth/2, height/5 + fbImageHeight/2, 0,
+                    width/2 + width/3 + width/20 + fbImageWidth/2, height/5 + fbImageHeight/2, 0,
+                    width/2 + width/3 + width/20 + fbImageWidth/2, height/5 - fbImageHeight/2, 0
+            });
+            fbImage.setDrawOrder(new short[] {
+                    0,1,2,0,2,3
+            });
+            fbImage.setUVCoordinates(new float[] {
+                    0,0,
+                    0,1,
+                    1,1,
+                    1,0
+            });
+            fbImage.refresh();
+
+            twitterCircle = new Circle();
+            twitterCircle.setCenter(width/2 - width/3 - width/20, height/5, 0);
+            twitterCircle.setRadius(width/30);
+            twitterCircle.setPrecision(360);
+            twitterCircle.refresh();
+
+            float twitterImageWidth = width/20;
+            float twitterImageHeight = width/20;
+            twitterImage = new Image();
+            twitterImage.setTextureHandle(Textures.twitterTexture);
+            twitterImage.setVertices(new float[] {
+                    width/2 - width/3 - width/20 - twitterImageWidth/2, height/5 - twitterImageHeight/2, 0,
+                    width/2 - width/3 - width/20 - twitterImageWidth/2, height/5 + twitterImageHeight/2, 0,
+                    width/2 - width/3 - width/20 + twitterImageWidth/2, height/5 + twitterImageHeight/2, 0,
+                    width/2 - width/3 - width/20 + twitterImageWidth/2, height/5 - twitterImageHeight/2, 0
+            });
+            twitterImage.setDrawOrder(new short[] {
+                    0,1,2,0,2,3
+            });
+            twitterImage.setUVCoordinates(new float[] {
+                    0,0,
+                    0,1,
+                    1,1,
+                    1,0
+            });
+            twitterImage.refresh();
 
             dragLeftCircle = new Circle();
             dragLeftCircle.setPrecision(60);
