@@ -7,9 +7,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.ServiceConnection;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
@@ -84,6 +86,8 @@ public class MainActivity extends Activity implements IUnityAdsListener, GoogleA
         AdColony.configure(this, client_options, app_id, retry_zone, interstitial_zone_id);
         UnityAds.init(this, unity_id, this);
         UnityAds.setTestMode(false);
+
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         gClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
@@ -168,18 +172,15 @@ public class MainActivity extends Activity implements IUnityAdsListener, GoogleA
     }
 
     @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
         if (mResolvingConnectionFailure) {
             // already resolving
             return;
         }
 
-        mResolvingConnectionFailure  = true;
-        if (!BaseGameUtils.resolveConnectionFailure(this,
-                    gClient, connectionResult,
-                    RC_SIGN_IN, "There was an issue with sign-in, please try again later.")) {
-                mResolvingConnectionFailure = false;
-        }
+        mResolvingConnectionFailure = BaseGameUtils.resolveConnectionFailure(this,
+                gClient, connectionResult,
+                RC_SIGN_IN, "There was an issue with sign-in, please try again later.");
     }
 
     @Override
@@ -204,7 +205,7 @@ public class MainActivity extends Activity implements IUnityAdsListener, GoogleA
         if (response == 0) {
             List<String> ownedIDs = ownedItems.getStringArrayList("INAPP_PURCHASE_ITEM_LIST");
 
-            for (int i = 0; i < ownedIDs.size(); ++i) {
+            for (int i = 0; i < (ownedIDs != null ? ownedIDs.size() : 0); ++i) {
                 String productID = ownedIDs.get(i);
                 if (productID.equals("remove_ads")) {
                     setNoAds();
@@ -261,9 +262,9 @@ public class MainActivity extends Activity implements IUnityAdsListener, GoogleA
         }
         PendingIntent pendingIntent = buyIntentBundle.getParcelable("BUY_INTENT");
         try {
-            startIntentSenderForResult(pendingIntent.getIntentSender(),
-                    1001, new Intent(), Integer.valueOf(0), Integer.valueOf(0),
-                    Integer.valueOf(0));
+            startIntentSenderForResult(pendingIntent != null ? pendingIntent.getIntentSender() : null,
+                    1001, new Intent(), 0, 0,
+                    0);
         } catch (IntentSender.SendIntentException e) {
             e.printStackTrace();
         }
