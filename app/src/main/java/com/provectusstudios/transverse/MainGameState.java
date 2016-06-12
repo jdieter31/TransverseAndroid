@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.opengl.Matrix;
 import android.support.v4.view.MotionEventCompat;
@@ -533,6 +534,17 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         } else {
             finishGame();
         }
+        MediaPlayer mp = MediaPlayer.create(mainRenderer.getContext().getApplicationContext(), R.raw.loss);
+        mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+
+            @Override
+            public void onCompletion(MediaPlayer mp) {
+                mp.reset();
+                mp.release();
+            }
+
+        });
+        mp.start();
     }
 
     private void createSecondChance() {
@@ -981,6 +993,17 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 currentSection = sectionsInView.get(0);
             }
             sectionToPass = nextSectionToPass;
+            MediaPlayer mp = MediaPlayer.create(mainRenderer.getContext().getApplicationContext(), R.raw.sound_success);
+            mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    mp.reset();
+                    mp.release();
+                }
+
+            });
+            mp.start();
         }
 
 
