@@ -68,8 +68,8 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
     private float[] verticalTranslate;
 
-    private Path leftPath = new Path();
-    private Path rightPath = new Path();
+    private FingerTrail leftFingerTrail;
+    private FingerTrail rightFingerTrail;
 
     private float[] viewProjectionMatrix;
     private float width;
@@ -265,8 +265,6 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         lineRenderType.setColor(.322f, .808f, 1f);
         verticalTranslate = new float[16];
         Matrix.setIdentityM(verticalTranslate, 0);
-        leftPath.setWidth(10f);
-        rightPath.setWidth(10f);
         defaultBackgroundRenderer = backgroundRenderType = new SolidRenderType();
         backgroundRenderType.setColor(.95f, .95f, .95f);
         scoreRectangleRenderType = new SolidRenderType();
@@ -402,10 +400,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     }
 
                     if (rightDown && leftDown) {
-                        leftPath = new Path();
-                        leftPath.setWidth(10f);
-                        rightPath = new Path();
-                        rightPath.setWidth(10f);
+                        leftFingerTrail = new ColorFingerTrail(7, height/2);
+                        ((ColorFingerTrail) leftFingerTrail).setColor(.322f, .808f, 1f);
+                        rightFingerTrail = new ColorFingerTrail(7, height/2);
+                        ((ColorFingerTrail) rightFingerTrail).setColor(.322f, .808f, 1f);
                         startingSecondChance = false;
                         scheduledLoss = false;
                         started = true;
@@ -559,8 +557,11 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         }
         rightDown = false;
         leftDown = false;
-        leftPath = new Path();
-        rightPath = new Path();
+
+        leftFingerTrail = new ColorFingerTrail(7, height/2);
+        ((ColorFingerTrail) leftFingerTrail).setColor(.322f, .808f, 1f);
+        rightFingerTrail = new ColorFingerTrail(7, height/2);
+        ((ColorFingerTrail) rightFingerTrail).setColor(.322f, .808f, 1f);
 
         leftSecondChanceCircle = new Circle();
         leftSecondChanceCircle.setPrecision(360);
@@ -922,11 +923,11 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         float rightYStable = rightY;
 
         boolean leftPast = false;
-        Path.Point newLeftPoint = new Path.Point();
+        FingerTrail.Point newLeftPoint = new FingerTrail.Point();
 
         newLeftPoint.x = leftXStable;
         newLeftPoint.y = leftYStable + verticalChange;
-        leftPath.addTopPoint(newLeftPoint);
+        leftFingerTrail.addTopPoint(newLeftPoint);
         if (wallsInView) {
             if (leftWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftXStable, leftYStable + verticalChange)
                     || rightWall.lineSegmentCrosses(lastLeftX, lastLeftY + lastVerticalChange, leftXStable, leftYStable + verticalChange)
@@ -962,10 +963,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
 
         boolean rightPast = false;
-        Path.Point newRightPoint = new Path.Point();
+        FingerTrail.Point newRightPoint = new FingerTrail.Point();
         newRightPoint.x = rightXStable;
         newRightPoint.y = rightYStable + verticalChange;
-        rightPath.addTopPoint(newRightPoint);
+        rightFingerTrail.addTopPoint(newRightPoint);
         if (wallsInView) {
             if (leftWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)
                     || rightWall.lineSegmentCrosses(lastRightX, lastRightY + lastVerticalChange, rightXStable, rightYStable + verticalChange)
@@ -1004,87 +1005,6 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
             });
             mp.start();
-        }
-
-
-        int pointsToRemove = leftPath.points.size();
-        float totalDistance = 0;
-        if (leftPath.points.size() > 2) {
-            int pointIndex = leftPath.getPoints().size() - 1;
-
-            Path.Point point = leftPath.getPoints().get(pointIndex);
-            float lastX = Float.NaN;
-            float lastY = Float.NaN;
-            float x = 0;
-            float y = 0;
-            float[] vertices = leftPath.getVertices();
-            for (int j = vertices.length - 1; j >= 0; j--) {
-                float vertice = vertices[j];
-                if (j % 3 == 1) {
-                    y = vertice;
-                } else if (j % 3 == 0) {
-                    x = vertice;
-                    if (!Float.isNaN(lastX)) {
-                        totalDistance += Math.sqrt(Math.pow(x - lastX, 2) + Math.pow(y - lastY, 2));
-                        if (totalDistance >= height/4) {
-                            leftPath.setAlphaVertice(j, (height/2 - totalDistance) / (height/4));
-                        }
-                    }
-                    if (x == point.x && y == point.y) {
-                        pointsToRemove--;
-                        if (pointIndex != 0) {
-                            pointIndex--;
-                            point = leftPath.getPoints().get(pointIndex);
-                        }
-                    }
-                    if (totalDistance >= height/2) {
-                        break;
-                    }
-                    lastX = x;
-                    lastY = y;
-                }
-            }
-            leftPath.removeBottomPoints(pointsToRemove);
-        }
-        pointsToRemove = rightPath.getPoints().size();
-        totalDistance = 0;
-        if (rightPath.points.size() > 2) {
-
-            int pointIndex = rightPath.getPoints().size() - 1;
-
-            Path.Point point = rightPath.getPoints().get(pointIndex);
-            float lastX = Float.NaN;
-            float lastY = Float.NaN;
-            float x = 0;
-            float y = 0;
-            float[] vertices = rightPath.getVertices();
-            for (int j = vertices.length - 1; j >= 0; j--) {
-                float vertice = vertices[j];
-                if (j % 3 == 1) {
-                    y = vertice;
-                } else if (j % 3 == 0) {
-                    x = vertice;
-                    if (!Float.isNaN(lastX)) {
-                        totalDistance += Math.sqrt(Math.pow(x - lastX, 2) + Math.pow(y - lastY, 2));
-                        if (totalDistance >= height/4) {
-                            rightPath.setAlphaVertice(j, (height/2 - totalDistance) / (height/4));
-                        }
-                    }
-                    if (x == point.x && y == point.y) {
-                        pointsToRemove--;
-                        if (pointIndex != 0) {
-                            pointIndex--;
-                            point = rightPath.getPoints().get(pointIndex);
-                        }
-                    }
-                    if (totalDistance >= height/2) {
-                        break;
-                    }
-                    lastX = x;
-                    lastY = y;
-                }
-            }
-            rightPath.removeBottomPoints(pointsToRemove);
         }
     }
 
@@ -1165,10 +1085,6 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         score = 0;
         leftDown = false;
         rightDown = false;
-        leftPath = new Path();
-        leftPath.setWidth(10f);
-        rightPath = new Path();
-        rightPath.setWidth(10f);
         titleInView = true;
         circlesInView = true;
         wallsInView = true;
@@ -1677,9 +1593,8 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 lineRenderType.drawShape(dragRightCircle);
             }
 
-            lineRenderType.setMatrix(verticalTranslateMVP);
-            lineRenderType.drawPath(leftPath);
-            lineRenderType.drawPath(rightPath);
+            leftFingerTrail.draw(verticalTranslateMVP);
+            rightFingerTrail.draw(verticalTranslateMVP);
             greyRenderType.setMatrix(viewProjectionMatrix);
             defaultBackgroundRenderer.setMatrix(viewProjectionMatrix);
             if (score < 10) {
@@ -1693,6 +1608,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     @Override
     public void refreshDimensions(float width, float height, float[] viewProjectionMatrix) {
         refreshing = true;
+        leftFingerTrail = new ColorFingerTrail(7, height/2);
+        ((ColorFingerTrail) leftFingerTrail).setColor(.322f, .808f, 1f);
+        rightFingerTrail = new ColorFingerTrail(7, height/2);
+        ((ColorFingerTrail) rightFingerTrail).setColor(.322f, .808f, 1f);
         if (circlesInView && !dragControlScheme) {
             leftCircle = new Circle();
             leftCircle.setPrecision(360);
@@ -1925,6 +1844,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
             leaderboardBox = new RoundedRectangle();
             leaderboardBox.setHeight(bottomButtonHeight);
+            //noinspection SuspiciousNameCombination
             leaderboardBox.setWidth(bottomButtonHeight);
             leaderboardBox.setCornerRadius(10f);
             leaderboardBox.setPrecision(60);
@@ -1983,6 +1903,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             }
             achievementBox = new RoundedRectangle();
             achievementBox.setHeight(bottomButtonHeight);
+            //noinspection SuspiciousNameCombination
             achievementBox.setWidth(bottomButtonHeight);
             achievementBox.setCornerRadius(10f);
             achievementBox.setPrecision(60);
