@@ -835,7 +835,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         retryText.refresh();
 
         loseShareBox = new RoundedRectangle();
-        loseShareBox.setHeight(height/5);
+        loseShareBox.setHeight(width/8);
         loseShareBox.setWidth(width/4);
         loseShareBox.setCenter(17*width/24, height/2, 0);
         loseShareBox.setPrecision(60);
@@ -844,21 +844,21 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         shareText = new Text();
         shareText.setFont("FFF Forward");
         shareText.setText("Share");
-        shareText.setTextSize((2*height/3)/5);
-        shareText.setOrigin(17*width/24 - shareText.getWidth()/2, height/2 - (height/3)/5, 0);
+        shareText.setTextSize((2*width/3)/8);
+        shareText.setOrigin(17*width/24 - shareText.getWidth()/2, height/2 - (width/3)/8, 0);
         shareText.refresh();
 
         loseLeaderboardBox = new RoundedRectangle();
-        loseLeaderboardBox.setHeight(height/5);
-        loseLeaderboardBox.setWidth(height/5);
-        loseLeaderboardBox.setCenter(17*width/24 - width/8 - width/50 - height/10, height/2, 0);
+        loseLeaderboardBox.setHeight(width/8);
+        loseLeaderboardBox.setWidth(width/8);
+        loseLeaderboardBox.setCenter(17*width/24 - width/8 - width/50 - width/16, height/2, 0);
         loseLeaderboardBox.setPrecision(60);
         loseLeaderboardBox.setCornerRadius(10f);
         loseLeaderboardBox.refresh();
 
-        float leaderboardImageHeight = 5*(height/5)/8;
+        float leaderboardImageHeight = 5*(width/8)/8;
         float leaderboardImageWidth = leaderboardImageHeight * (196f/210f);
-        float leaderboardCenterX = 17*width/24 - width/8 - width/50 - height/10;
+        float leaderboardCenterX = 17*width/24 - width/8 - width/50 - width/16;
         loseLeaderboardImage = new Image();
         loseLeaderboardImage.setTextureHandle(Textures.leaderboardTexture);
         loseLeaderboardImage.setVertices(new float[] {
@@ -882,14 +882,14 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         loseAchievementBox = new RoundedRectangle();
         loseAchievementBox.setHeight(height/5);
         loseAchievementBox.setWidth(height/5);
-        loseAchievementBox.setCenter(17*width/24 + width/8 + width/50 + height/10, height/2, 0);
+        loseAchievementBox.setCenter(17*width/24 + width/8 + width/50 + width/16, height/2, 0);
         loseAchievementBox.setPrecision(60);
         loseAchievementBox.setCornerRadius(10f);
         loseAchievementBox.refresh();
 
         float achievementImageWidth = 5*(height/5)/8;
         float achievementImageHeight = achievementImageWidth * (215f/256f);
-        float achievementCenterX = 17*width/24 + width/8 + width/50 + height/10;
+        float achievementCenterX = 17*width/24 + width/8 + width/50 + width/16;
         loseAchievementImage= new Image();
         loseAchievementImage.setTextureHandle(Textures.trophyTexture);
         loseAchievementImage.setVertices(new float[] {
@@ -1102,7 +1102,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         Matrix.setIdentityM(verticalTranslate, 0);
         sectionsInView = new ArrayList<>();
         refreshDimensions(width, height, viewProjectionMatrix);
-        if (!purchasedSecondChance) {
+        /* if (!purchasedSecondChance) {
             gamesPlayedSinceAd++;
             if (initialAd && gamesPlayedSinceAd >= initialAds) {
                 gamesPlayedSinceAd = gamesPerAd;
@@ -1123,7 +1123,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 }
                 gamesPlayedSinceAd = 0;
             }
-        }
+        } */
         hadSecondChance = false;
         inSecondChanceMenu = false;
         scheduledRestart = false;
@@ -1807,7 +1807,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 dragAndHoldOnBothSidesToStart.refresh();
             }
 
-            float bottomButtonHeight = height/6;
+            float bottomButtonHeight = 7 * width /64;
 
             titleHighScoreBox = new RoundedRectangle();
             titleHighScoreBox.setHeight(bottomButtonHeight);
