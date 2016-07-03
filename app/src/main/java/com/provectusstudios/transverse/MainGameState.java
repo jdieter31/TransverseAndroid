@@ -239,6 +239,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     private SolidRenderType fbRenderType;
     private SolidRenderType twitterRenderType;
 
+    private Circle muteButton;
+    private Image muteImage;
+    private boolean muted;
+
     public MainGameState(MainRenderer mainRenderer) {
 
         AdColony.addV4VCListener(this);
@@ -257,6 +261,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         SharedPreferences pref = ((Activity) mainRenderer.getContext()).getPreferences(Context.MODE_PRIVATE);
         dragControlScheme = pref.getBoolean("dragControlScheme", false);
         showIndicator = pref.getBoolean("showIndicator", false);
+        muted = pref.getBoolean("muted", false);
         greyRenderType = new SolidRenderType();
         greyRenderType.setAlpha(1);
         greyRenderType.setColor(.4f, .4f, .4f);
@@ -337,6 +342,28 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                         }
                     } else if (switchControlSchemeBox.containsPoint(dpX, dpY)) {
                         scheduledControlSwitch = true;
+                    } else if (muteButton.containsPoint(dpX, dpY)) {
+                        muted = !muted;
+                        SharedPreferences pref = ((Activity) mainRenderer.getContext()).getPreferences(Context.MODE_PRIVATE);
+                        SharedPreferences.Editor edit = pref.edit();
+                        edit.putBoolean("muted", muted);
+                        edit.apply();
+                        if (muted) {
+                            muteImage.setUVCoordinates(new float[]{
+                                    0, 0,
+                                    0, 1,
+                                    .5f, 1,
+                                    .5f, 0
+                            });
+                        } else {
+                            muteImage.setUVCoordinates(new float[]{
+                                    .5f, 0,
+                                    .5f, 1,
+                                    1, 1,
+                                    1, 0
+                            });
+                        }
+                        muteImage.refresh();
                     } else if (!purchasedSecondChance && purchaseSecondChanceBox != null && purchaseSecondChanceBox.containsPoint(dpX, dpY)) {
                         ((MainActivity) mainRenderer.getContext()).purchaseNoAds();
                     } else if (fbCircle.containsPoint(dpX, dpY)) {
@@ -532,17 +559,19 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         } else {
             finishGame();
         }
-        MediaPlayer mp = MediaPlayer.create(mainRenderer.getContext().getApplicationContext(), R.raw.loss);
-        mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+        if (!muted) {
+            MediaPlayer mp = MediaPlayer.create(mainRenderer.getContext().getApplicationContext(), R.raw.loss);
+            mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
 
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                mp.reset();
-                mp.release();
-            }
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    mp.reset();
+                    mp.release();
+                }
 
-        });
-        mp.start();
+            });
+            mp.start();
+        }
     }
 
     private void createSecondChance() {
@@ -994,17 +1023,19 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 currentSection = sectionsInView.get(0);
             }
             sectionToPass = nextSectionToPass;
-            MediaPlayer mp = MediaPlayer.create(mainRenderer.getContext().getApplicationContext(), R.raw.sound_success);
-            mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+            if (!muted) {
+                MediaPlayer mp = MediaPlayer.create(mainRenderer.getContext().getApplicationContext(), R.raw.sound_success);
+                mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
 
-                @Override
-                public void onCompletion(MediaPlayer mp) {
-                    mp.reset();
-                    mp.release();
-                }
+                    @Override
+                    public void onCompletion(MediaPlayer mp) {
+                        mp.reset();
+                        mp.release();
+                    }
 
-            });
-            mp.start();
+                });
+                mp.start();
+            }
         }
     }
 
@@ -1253,6 +1284,8 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             titleRenderType.drawShape(switchControlSchemeBox);
             backgroundRenderType.drawText(switchControlsText);
 
+            titleRenderType.drawShape(muteButton);
+            backgroundRenderType.drawImage(muteImage);
 
             if (!purchasedSecondChance) {
                 titleRenderType.drawShape(purchaseSecondChanceBox);
@@ -1500,7 +1533,9 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     defaultBackgroundRenderer.drawText(titleHighScoreText);
                     titleRenderType.drawShape(leaderboardBox);
                     titleRenderType.drawShape(achievementBox);
+                    titleRenderType.drawShape(muteButton);
                     titleRenderType.drawShape(switchControlSchemeBox);
+                    defaultBackgroundRenderer.drawImage(muteImage);
                     defaultBackgroundRenderer.drawText(switchControlsText);
                     defaultBackgroundRenderer.drawImage(achievementImage);
                     defaultBackgroundRenderer.drawImage(leaderboardImage);
@@ -1530,6 +1565,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     titleRenderType.drawShape(titleHighScoreBox);
                     titleRenderType.drawShape(leaderboardBox);
                     titleRenderType.drawShape(achievementBox);
+                    titleRenderType.drawShape(muteButton);
                     titleRenderType.drawShape(switchControlSchemeBox);
 
                     if (!dragControlScheme) {
@@ -1556,6 +1592,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     defaultBackgroundRenderer.drawImage(fbImage);
                     defaultBackgroundRenderer.drawImage(twitterImage);
                     defaultBackgroundRenderer.drawText(switchControlsText);
+                    defaultBackgroundRenderer.drawImage(muteImage);
                     if (!purchasedSecondChance) {
                         titleRenderType.drawShape(purchaseSecondChanceBox);
                         defaultBackgroundRenderer.drawText(buyNoAdsAndText);
@@ -1901,6 +1938,44 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             } else {
                 achievementCenterX = width/2 + 11 * width / 64 + width / 36 + bottomButtonHeight/2;
             }
+
+            muteButton = new Circle();
+            muteButton.setPrecision(360);
+            muteButton.setRadius(width/25);
+            muteButton.setCenter((15 + width/6)/2, height/2, 0);
+            muteButton.refresh();
+
+            float muteImageSize = width/27;
+            float muteCenterX = (15 + width/6)/2;
+            muteImage = new Image();
+            muteImage.setTextureHandle(Textures.muteTexture);
+            muteImage.setVertices(new float[] {
+                    muteCenterX - muteImageSize/2, height/2 - muteImageSize/2, 0,
+                    muteCenterX - muteImageSize/2, height/2 + muteImageSize/2, 0,
+                    muteCenterX + muteImageSize/2, height/2 + muteImageSize/2, 0,
+                    muteCenterX + muteImageSize/2, height/2 - muteImageSize/2, 0
+            });
+            muteImage.setDrawOrder(new short[] {
+                    0,1,2,0,2,3
+            });
+            if (muted) {
+                muteImage.setUVCoordinates(new float[]{
+                        0, 0,
+                        0, 1,
+                        .5f, 1,
+                        .5f, 0
+                });
+            } else {
+                muteImage.setUVCoordinates(new float[]{
+                        .5f, 0,
+                        .5f, 1,
+                        1, 1,
+                        1, 0
+                });
+            }
+
+            muteImage.refresh();
+
             achievementBox = new RoundedRectangle();
             achievementBox.setHeight(bottomButtonHeight);
             //noinspection SuspiciousNameCombination

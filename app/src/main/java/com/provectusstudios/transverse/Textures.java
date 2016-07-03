@@ -18,6 +18,7 @@ public class Textures {
     public static int particleTexture;
     public static int fbTexture;
     public static int twitterTexture;
+    public static int muteTexture;
 
     private static int maxTextureSize;
 
@@ -39,6 +40,8 @@ public class Textures {
         fbTexture = loadTextureFromResource(R.drawable.facebook, context);
         Log.d("Transverse", "Loading twitter texture");
         twitterTexture = loadTextureFromResource(R.drawable.twitter, context);
+        Log.d("Transverse", "Loading mute texture");
+        muteTexture = loadTextureFromResource(R.drawable.mute, context);
     }
 
     private static int loadTextureFromBitmap(Bitmap bitmap) {
