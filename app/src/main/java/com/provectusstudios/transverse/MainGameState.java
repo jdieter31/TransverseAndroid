@@ -21,7 +21,6 @@ import com.jirbo.adcolony.AdColony;
 import com.jirbo.adcolony.AdColonyV4VCAd;
 import com.jirbo.adcolony.AdColonyV4VCListener;
 import com.jirbo.adcolony.AdColonyV4VCReward;
-import com.jirbo.adcolony.AdColonyVideoAd;
 import com.unity3d.ads.android.IUnityAdsListener;
 import com.unity3d.ads.android.UnityAds;
 
@@ -243,6 +242,8 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     private Image muteImage;
     private boolean muted;
 
+    private MediaPlayer musicPlayer;
+
     public MainGameState(MainRenderer mainRenderer) {
 
         AdColony.addV4VCListener(this);
@@ -290,6 +291,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         twitterRenderType.setColor(.333f, .675f, .933f);
         twitterRenderType.setAlpha(1);
         currentRenderer = greyRenderType;
+
+        if (!muted) {
+            musicPlayer = MediaPlayer.create(mainRenderer.getContext().getApplicationContext(), R.raw.menu_screen_loop);
+            musicPlayer.setLooping(true);
+            musicPlayer.start();
+        }
     }
 
     private void readHighScore() {
@@ -364,6 +371,22 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                             });
                         }
                         muteImage.refresh();
+                        if (!muted) {
+                            if (musicPlayer != null) {
+                                musicPlayer.reset();
+                                musicPlayer.release();
+                                musicPlayer = null;
+                            }
+                            musicPlayer = MediaPlayer.create(mainRenderer.getContext().getApplicationContext(), R.raw.menu_screen_loop);
+                            musicPlayer.setLooping(true);
+                            musicPlayer.start();
+                        } else {
+                            if (musicPlayer != null) {
+                                musicPlayer.reset();
+                                musicPlayer.release();
+                                musicPlayer = null;
+                            }
+                        }
                     } else if (!purchasedSecondChance && purchaseSecondChanceBox != null && purchaseSecondChanceBox.containsPoint(dpX, dpY)) {
                         ((MainActivity) mainRenderer.getContext()).purchaseNoAds();
                     } else if (fbCircle.containsPoint(dpX, dpY)) {
@@ -392,6 +415,16 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                         tracker.send(new HitBuilders.ScreenViewBuilder().build());
                         started = true;
                         lastMoveCalc = System.currentTimeMillis();
+                        if (!muted) {
+                            if (musicPlayer != null) {
+                                musicPlayer.reset();
+                                musicPlayer.release();
+                                musicPlayer = null;
+                            }
+                            musicPlayer = MediaPlayer.create(mainRenderer.getContext().getApplicationContext(), R.raw.gamplay_loop);
+                            musicPlayer.setLooping(true);
+                            musicPlayer.start();
+                        }
                     }
 
                 }
@@ -1113,6 +1146,16 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         Tracker tracker = AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
         tracker.setScreenName("Main Menu");
         tracker.send(new HitBuilders.ScreenViewBuilder().build());
+        if (!muted) {
+            if (musicPlayer != null) {
+                musicPlayer.reset();
+                musicPlayer.release();
+                musicPlayer = null;
+            }
+            musicPlayer = MediaPlayer.create(mainRenderer.getContext().getApplicationContext(), R.raw.menu_screen_loop);
+            musicPlayer.setLooping(true);
+            musicPlayer.start();
+        }
         score = 0;
         leftDown = false;
         rightDown = false;
