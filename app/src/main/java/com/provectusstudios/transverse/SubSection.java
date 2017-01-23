@@ -3,7 +3,7 @@ package com.provectusstudios.transverse;
 import java.util.Random;
 
 public interface SubSection {
-    void draw(RenderType renderType);
+    void draw(RenderType renderType, float[] matrix);
     void refresh();
     boolean handleTouchMove(float startX, float endX, float startY, float endY);
     void generate(Random random, float width, float startX, float startY);

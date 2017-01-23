@@ -23,14 +23,16 @@ public class DoubleSection implements Section {
 
     private float difficulty;
 
+    private MainGameState mainGameState;
+
     @Override
     public void draw(float[] matrix, RenderType renderType) {
         renderType.setMatrix(matrix);
         renderType.drawShape(centerDivider);
         renderType.drawShape(leftWall);
         renderType.drawShape(rightWall);
-        section1.draw(renderType);
-        section2.draw(renderType);
+        section1.draw(renderType, matrix);
+        section2.draw(renderType, matrix);
         renderType.drawShape(firstLeftGateLeft);
         renderType.drawShape(firstLeftGateRight);
         renderType.drawShape(firstRightGateLeft);
@@ -106,6 +108,11 @@ public class DoubleSection implements Section {
             section2.generate(random, (width-45)/2, startX + 30 + (width-45)/2, startY, section1.getLength());
         }
 
+        ((GateSubSection) section1).generateCoins(random);
+        ((GateSubSection) section2).generateCoins(random);
+        ((GateSubSection) section1).connectToMainGameState(mainGameState);
+        ((GateSubSection) section2).connectToMainGameState(mainGameState);
+
         centerDivider = new Rectangle();
         centerDivider.setOrigin(startX + 15 + (width-45)/2, startY - length, 0);
         centerDivider.setWidth(15);
@@ -143,6 +150,10 @@ public class DoubleSection implements Section {
             subSection.setInverted(true);
         }
         return subSection;
+    }
+
+    public void connectToMainGameState(MainGameState mainGameState) {
+        this.mainGameState = mainGameState;
     }
 
     @Override

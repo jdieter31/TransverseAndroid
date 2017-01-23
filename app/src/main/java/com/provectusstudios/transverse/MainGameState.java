@@ -41,6 +41,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     private boolean scheduledEndGame = false;
     private boolean scheduledSecondChance = false;
     private boolean scheduledControlSwitch = false;
+    private boolean scheduledStoreToggle = false;
 
     private static String LEADERBOARD_ID = "CgkIjb-hrowBEAIQAQ";
 
@@ -201,9 +202,9 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
     private boolean purchasedSecondChance = false;
 
-    private RoundedRectangle purchaseSecondChanceBox;
+    /* private RoundedRectangle purchaseSecondChanceBox;
     private Text buyNoAdsAndText;
-    private Text secondChancesText;
+    private Text secondChancesText; */
 
     private RoundedRectangle loseAchievementBox;
     private Image loseAchievementImage;
@@ -239,9 +240,25 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     private SolidRenderType fbRenderType;
     private SolidRenderType twitterRenderType;
 
-    private Circle muteButton;
+    private RoundedRectangle muteButton;
     private Image muteImage;
     private boolean muted;
+
+    private int numOfCoins = 0;
+
+    private Coin indicatorCoin;
+    private Text coinText;
+
+    private Text titleCoinText;
+    private Coin titleCoin;
+    private RoundedRectangle titleCoinBox;
+
+    private RoundedRectangle coinStoreBox;
+    private Coin coinStoreCoin;
+    private Text coinStoreText;
+
+    private StoreScreen storeScreen;
+    private boolean showingStore = false;
 
     public MainGameState(MainRenderer mainRenderer) {
 
@@ -262,6 +279,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         dragControlScheme = pref.getBoolean("dragControlScheme", false);
         showIndicator = pref.getBoolean("showIndicator", false);
         muted = pref.getBoolean("muted", false);
+        numOfCoins = pref.getInt("numOfCoins", 0);
         greyRenderType = new SolidRenderType();
         greyRenderType.setAlpha(1);
         greyRenderType.setColor(.4f, .4f, .4f);
@@ -299,6 +317,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
 
     @Override
     public void handleTouchEvent(MotionEvent event) {
+        if (showingStore) {
+            storeScreen.handleTouch(event);
+            return;
+        }
         float density = mainRenderer.getContext().getResources().getDisplayMetrics().density;
         int action = MotionEventCompat.getActionMasked(event);
         switch (action) {
@@ -349,23 +371,17 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                         edit.putBoolean("muted", muted);
                         edit.apply();
                         if (muted) {
-                            muteImage.setUVCoordinates(new float[]{
-                                    0, 0,
-                                    0, 1,
-                                    .5f, 1,
-                                    .5f, 0
-                            });
+                            muteImage.setImage("mute");
                         } else {
-                            muteImage.setUVCoordinates(new float[]{
-                                    .5f, 0,
-                                    .5f, 1,
-                                    1, 1,
-                                    1, 0
-                            });
+                            muteImage.setImage("volume");
                         }
                         muteImage.refresh();
-                    } else if (!purchasedSecondChance && purchaseSecondChanceBox != null && purchaseSecondChanceBox.containsPoint(dpX, dpY)) {
+                    } /*else if (!purchasedSecondChance && purchaseSecondChanceBox != null && purchaseSecondChanceBox.containsPoint(dpX, dpY)) {
                         ((MainActivity) mainRenderer.getContext()).purchaseNoAds();
+                    } */ else if (coinStoreBox.containsPoint(dpX, dpY)) {
+                        scheduledStoreToggle = true;
+                        storeScreen = new StoreScreen(this);
+                        storeScreen.refreshDimensions(width, height);
                     } else if (fbCircle.containsPoint(dpX, dpY)) {
                         mainRenderer.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.facebook.com/provectusstudios")));
                     } else if (twitterCircle.containsPoint(dpX, dpY)) {
@@ -889,21 +905,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         float leaderboardImageWidth = leaderboardImageHeight * (196f/210f);
         float leaderboardCenterX = 17*width/24 - width/8 - width/50 - width/16;
         loseLeaderboardImage = new Image();
-        loseLeaderboardImage.setTextureHandle(Textures.leaderboardTexture);
+        loseLeaderboardImage.setImage("leaderboard");
         loseLeaderboardImage.setVertices(new float[] {
                 leaderboardCenterX - leaderboardImageWidth/2, height/2 - leaderboardImageHeight/2, 0,
                 leaderboardCenterX - leaderboardImageWidth/2, height/2 + leaderboardImageHeight/2, 0,
                 leaderboardCenterX + leaderboardImageWidth/2, height/2 + leaderboardImageHeight/2, 0,
                 leaderboardCenterX + leaderboardImageWidth/2, height/2 - leaderboardImageHeight/2, 0
-        });
-        loseLeaderboardImage.setDrawOrder(new short[] {
-                0,1,2,0,2,3
-        });
-        loseLeaderboardImage.setUVCoordinates(new float[] {
-                0,0,
-                0,1,
-                1,1,
-                1,0
         });
         loseLeaderboardImage.refresh();
 
@@ -920,21 +927,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         float achievementImageHeight = achievementImageWidth * (215f/256f);
         float achievementCenterX = 17*width/24 + width/8 + width/50 + width/16;
         loseAchievementImage= new Image();
-        loseAchievementImage.setTextureHandle(Textures.trophyTexture);
+        loseAchievementImage.setImage("trophy");
         loseAchievementImage.setVertices(new float[] {
                 achievementCenterX - achievementImageWidth/2, height/2 - achievementImageHeight/2, 0,
                 achievementCenterX - achievementImageWidth/2, height/2 + achievementImageHeight/2, 0,
                 achievementCenterX + achievementImageWidth/2, height/2 + achievementImageHeight/2, 0,
                 achievementCenterX + achievementImageWidth/2, height/2 - achievementImageHeight/2, 0
-        });
-        loseAchievementImage.setDrawOrder(new short[] {
-                0,1,2,0,2,3
-        });
-        loseAchievementImage.setUVCoordinates(new float[] {
-                0,0,
-                0,1,
-                1,1,
-                1,0
         });
         loseAchievementImage.refresh();
 
@@ -1101,6 +1099,7 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
     private void generateSections() {
         if (endCurrentGenerate >= verticalChange - 10) {
             Section section = getSection();
+            ((DoubleSection) section).connectToMainGameState(this);
             section.generate(random, 0, width, endCurrentGenerate);
             section.refresh();
             endCurrentGenerate = endCurrentGenerate - section.getLength();
@@ -1169,6 +1168,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         if (refreshing) {
             return;
         }
+        if (scheduledStoreToggle) {
+            showingStore = !showingStore;
+            scheduledStoreToggle = false;
+        }
         if (scheduledRestart) {
             triggerRestart();
         }
@@ -1195,6 +1198,10 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             edit.apply();
             refreshDimensions(width, height, viewProjectionMatrix);
             scheduledControlSwitch = false;
+        }
+        if (showingStore) {
+            storeScreen.draw(viewProjectionMatrix);
+            return;
         }
         if (animatingColorChange) {
             long dt = System.currentTimeMillis() - timeOfChange;
@@ -1287,11 +1294,19 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             titleRenderType.drawShape(muteButton);
             backgroundRenderType.drawImage(muteImage);
 
-            if (!purchasedSecondChance) {
+            titleRenderType.drawShape(titleCoinBox);
+            backgroundRenderType.drawText(titleCoinText);
+            titleCoin.draw(viewProjectionMatrix);
+
+            /* if (!purchasedSecondChance) {
                 titleRenderType.drawShape(purchaseSecondChanceBox);
                 backgroundRenderType.drawText(buyNoAdsAndText);
                 backgroundRenderType.drawText(secondChancesText);
-            }
+            } */
+
+            titleRenderType.drawShape(coinStoreBox);
+            backgroundRenderType.drawText(coinStoreText);
+            coinStoreCoin.draw(viewProjectionMatrix);
 
             if (dragControlScheme) {
                 if (leftDown) {
@@ -1392,9 +1407,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 defaultBackgroundRenderer.setMatrix(viewProjectionMatrix);
                 if (score < 10) {
                     greyRenderType.drawText(scoreText);
+                    greyRenderType.drawText(coinText);
                 } else {
                     defaultBackgroundRenderer.drawText(scoreText);
+                    defaultBackgroundRenderer.drawText(coinText);
                 }
+                indicatorCoin.draw(viewProjectionMatrix);
             }
         } else if (startingSecondChance) {
             float[] verticalTranslateMVP = new float[16];
@@ -1461,9 +1479,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             defaultBackgroundRenderer.setMatrix(viewProjectionMatrix);
             if (score < 10) {
                 greyRenderType.drawText(scoreText);
+                greyRenderType.drawText(coinText);
             } else {
                 defaultBackgroundRenderer.drawText(scoreText);
+                defaultBackgroundRenderer.drawText(coinText);
             }
+            indicatorCoin.draw(viewProjectionMatrix);
         } else {
             if (scheduledLoss) {
                 handleLoss();
@@ -1533,18 +1554,24 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     defaultBackgroundRenderer.drawText(titleHighScoreText);
                     titleRenderType.drawShape(leaderboardBox);
                     titleRenderType.drawShape(achievementBox);
+                    titleRenderType.drawShape(titleCoinBox);
                     titleRenderType.drawShape(muteButton);
                     titleRenderType.drawShape(switchControlSchemeBox);
+                    titleRenderType.drawShape(coinStoreBox);
                     defaultBackgroundRenderer.drawImage(muteImage);
                     defaultBackgroundRenderer.drawText(switchControlsText);
                     defaultBackgroundRenderer.drawImage(achievementImage);
                     defaultBackgroundRenderer.drawImage(leaderboardImage);
+                    defaultBackgroundRenderer.drawText(titleCoinText);
+                    titleCoin.draw(viewProjectionMatrix);
+                    defaultBackgroundRenderer.drawText(coinStoreText);
+                    coinStoreCoin.draw(viewProjectionMatrix);
 
-                    if (!purchasedSecondChance) {
+                    /* if (!purchasedSecondChance) {
                         titleRenderType.drawShape(purchaseSecondChanceBox);
                         defaultBackgroundRenderer.drawText(buyNoAdsAndText);
                         defaultBackgroundRenderer.drawText(secondChancesText);
-                    }
+                    } */
                 }
                 if (sane) {
                     float alphaChange = dt * (1/500f);
@@ -1567,6 +1594,9 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     titleRenderType.drawShape(achievementBox);
                     titleRenderType.drawShape(muteButton);
                     titleRenderType.drawShape(switchControlSchemeBox);
+                    titleRenderType.drawShape(titleCoinBox);
+                    titleRenderType.drawShape(coinStoreBox);
+
 
                     if (!dragControlScheme) {
                         titleRenderType.drawShape(tapToStartRectangle);
@@ -1593,11 +1623,15 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                     defaultBackgroundRenderer.drawImage(twitterImage);
                     defaultBackgroundRenderer.drawText(switchControlsText);
                     defaultBackgroundRenderer.drawImage(muteImage);
-                    if (!purchasedSecondChance) {
+                    defaultBackgroundRenderer.drawText(titleCoinText);
+                    titleCoin.draw(viewProjectionMatrix);
+                    defaultBackgroundRenderer.drawText(coinStoreText);
+                    coinStoreCoin.draw(viewProjectionMatrix);
+                    /* if (!purchasedSecondChance) {
                         titleRenderType.drawShape(purchaseSecondChanceBox);
                         defaultBackgroundRenderer.drawText(buyNoAdsAndText);
                         defaultBackgroundRenderer.drawText(secondChancesText);
-                    }
+                    } */
 
                     defaultBackgroundRenderer.setAlpha(1f);
                     if (!titleInView) {
@@ -1636,9 +1670,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             defaultBackgroundRenderer.setMatrix(viewProjectionMatrix);
             if (score < 10) {
                 greyRenderType.drawText(scoreText);
+                greyRenderType.drawText(coinText);
             } else {
                 defaultBackgroundRenderer.drawText(scoreText);
+                defaultBackgroundRenderer.drawText(coinText);
             }
+            indicatorCoin.draw(viewProjectionMatrix);
         }
     }
 
@@ -1705,21 +1742,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             float fbImageWidth = width/25;
             float fbImageHeight = width/25;
             fbImage = new Image();
-            fbImage.setTextureHandle(Textures.fbTexture);
+            fbImage.setImage("facebook");
             fbImage.setVertices(new float[] {
                     width/2 + width/3 + width/20 - fbImageWidth/2, height/5 - fbImageHeight/2, 0,
                     width/2 + width/3 + width/20 - fbImageWidth/2, height/5 + fbImageHeight/2, 0,
                     width/2 + width/3 + width/20 + fbImageWidth/2, height/5 + fbImageHeight/2, 0,
                     width/2 + width/3 + width/20 + fbImageWidth/2, height/5 - fbImageHeight/2, 0
-            });
-            fbImage.setDrawOrder(new short[] {
-                    0,1,2,0,2,3
-            });
-            fbImage.setUVCoordinates(new float[] {
-                    0,0,
-                    0,1,
-                    1,1,
-                    1,0
             });
             fbImage.refresh();
 
@@ -1732,21 +1760,12 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             float twitterImageWidth = width/20;
             float twitterImageHeight = width/20;
             twitterImage = new Image();
-            twitterImage.setTextureHandle(Textures.twitterTexture);
+            twitterImage.setImage("twitter");
             twitterImage.setVertices(new float[] {
                     width/2 - width/3 - width/20 - twitterImageWidth/2, height/5 - twitterImageHeight/2, 0,
                     width/2 - width/3 - width/20 - twitterImageWidth/2, height/5 + twitterImageHeight/2, 0,
                     width/2 - width/3 - width/20 + twitterImageWidth/2, height/5 + twitterImageHeight/2, 0,
                     width/2 - width/3 - width/20 + twitterImageWidth/2, height/5 - twitterImageHeight/2, 0
-            });
-            twitterImage.setDrawOrder(new short[] {
-                    0,1,2,0,2,3
-            });
-            twitterImage.setUVCoordinates(new float[] {
-                    0,0,
-                    0,1,
-                    1,1,
-                    1,0
             });
             twitterImage.refresh();
 
@@ -1877,47 +1896,42 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             switchControlsText.setOrigin(width/2 - switchControlsText.getWidth()/2, 11*height/12 - height/32, 0);
             switchControlsText.refresh();
 
-            float leaderboardCenterX = width/2 - 11 * width / 64 - width / 36 - bottomButtonHeight/2;
+            float leftBottomButtonHeight = width/13;
+            float leftButtonCenterX = (15 + width/2 - (11*width/64))/2;
+            float leftButtonCenterY = 4*height/5 - leftBottomButtonHeight/2 - width/128;
+
+            float leaderboardCenterX = leftButtonCenterX;
 
             leaderboardBox = new RoundedRectangle();
-            leaderboardBox.setHeight(bottomButtonHeight);
+            leaderboardBox.setHeight(leftBottomButtonHeight);
             //noinspection SuspiciousNameCombination
-            leaderboardBox.setWidth(bottomButtonHeight);
+            leaderboardBox.setWidth(leftBottomButtonHeight);
             leaderboardBox.setCornerRadius(10f);
             leaderboardBox.setPrecision(60);
-            leaderboardBox.setCenter(leaderboardCenterX, 4*height/5, 0);
+            leaderboardBox.setCenter(leaderboardCenterX, leftButtonCenterY, 0);
             leaderboardBox.refresh();
 
-            float leaderboardImageHeight = 5*bottomButtonHeight/8;
+            float leaderboardImageHeight = 5*leftBottomButtonHeight/8;
             float leaderboardImageWidth = leaderboardImageHeight * (196f/210f);
 
             leaderboardImage = new Image();
-            leaderboardImage.setTextureHandle(Textures.leaderboardTexture);
+            leaderboardImage.setImage("leaderboard");
             leaderboardImage.setVertices(new float[] {
-                    leaderboardCenterX - leaderboardImageWidth/2, 4*height/5 - leaderboardImageHeight/2, 0,
-                    leaderboardCenterX - leaderboardImageWidth/2, 4*height/5 + leaderboardImageHeight/2, 0,
-                    leaderboardCenterX + leaderboardImageWidth/2, 4*height/5 + leaderboardImageHeight/2, 0,
-                    leaderboardCenterX + leaderboardImageWidth/2, 4*height/5 - leaderboardImageHeight/2, 0
-            });
-            leaderboardImage.setDrawOrder(new short[] {
-                    0,1,2,0,2,3
-            });
-            leaderboardImage.setUVCoordinates(new float[] {
-                    0,0,
-                    0,1,
-                    1,1,
-                    1,0
+                    leaderboardCenterX - leaderboardImageWidth/2, leftButtonCenterY - leaderboardImageHeight/2, 0,
+                    leaderboardCenterX - leaderboardImageWidth/2, leftButtonCenterY + leaderboardImageHeight/2, 0,
+                    leaderboardCenterX + leaderboardImageWidth/2, leftButtonCenterY + leaderboardImageHeight/2, 0,
+                    leaderboardCenterX + leaderboardImageWidth/2, leftButtonCenterY - leaderboardImageHeight/2, 0
             });
             leaderboardImage.refresh();
 
-            float achievementCenterX;
+            float achievementCenterX = leftButtonCenterX + leftBottomButtonHeight + width/64;
 
             if (!purchasedSecondChance) {
-                achievementCenterX = width/2 - 11 * width / 64 - width / 36 - bottomButtonHeight - width/36 - bottomButtonHeight/2;
-                purchaseSecondChanceBox = new RoundedRectangle();
-                purchaseSecondChanceBox.setHeight(bottomButtonHeight);
+                //achievementCenterX = width/2 - 11 * width / 64 - width / 36 - leftBottomButtonHeight - width/36 - leftBottomButtonHeight/2;
+                /* purchaseSecondChanceBox = new RoundedRectangle();
+                purchaseSecondChanceBox.setHeight(leftBottomButtonHeight);
                 purchaseSecondChanceBox.setWidth(width/4);
-                purchaseSecondChanceBox.setCenter(width/2 + 11 * width/64 + width/36 + width/8, 4*height/5, 0);
+                purchaseSecondChanceBox.setCenter(width/2 + 11 * width/64 + width/36 + width/8, leftButtonCenterY, 0);
                 purchaseSecondChanceBox.setPrecision(60);
                 purchaseSecondChanceBox.setCornerRadius(10f);
                 purchaseSecondChanceBox.refresh();
@@ -1925,8 +1939,8 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 buyNoAdsAndText = new Text();
                 buyNoAdsAndText.setFont("FFF Forward");
                 buyNoAdsAndText.setText("No Ads And");
-                buyNoAdsAndText.setTextSize(height/16);
-                buyNoAdsAndText.setOrigin(width/2 + 11 * width/64 + width/36 + width/8 - buyNoAdsAndText.getWidth()/2, 4*height/5 - height/16, 0);
+                buyNoAdsAndText.setTextSize(5*leftBottomButtonHeight/12);
+                buyNoAdsAndText.setOrigin(width/2 + 11 * width/64 + width/36 + width/8 - buyNoAdsAndText.getWidth()/2, leftButtonCenterY - 5*leftBottomButtonHeight/24, 0);
                 buyNoAdsAndText.refresh();
 
                 secondChancesText = new Text();
@@ -1934,77 +1948,99 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
                 secondChancesText.setText("Second Chances");
                 secondChancesText.setTextSize(height/16);
                 secondChancesText.setOrigin(width/2 + 11 * width/64 + width/36 + width/8 - secondChancesText.getWidth()/2, 4*height/5, 0);
-                secondChancesText.refresh();
+                secondChancesText.refresh(); */
             } else {
-                achievementCenterX = width/2 + 11 * width / 64 + width / 36 + bottomButtonHeight/2;
+                //achievementCenterX = width/2 + 11 * width / 64 + width / 36 + leftBottomButtonHeight/2;
             }
 
-            muteButton = new Circle();
-            muteButton.setPrecision(360);
-            muteButton.setRadius(width/25);
-            muteButton.setCenter((15 + width/6)/2, height/2, 0);
+            float muteCenterX = leftButtonCenterX - leftBottomButtonHeight - width/64;
+
+            muteButton = new RoundedRectangle();
+            muteButton.setHeight(leftBottomButtonHeight);
+            //noinspection SuspiciousNameCombination
+            muteButton.setWidth(leftBottomButtonHeight);
+            muteButton.setCornerRadius(10f);
+            muteButton.setPrecision(60);
+            muteButton.setCenter(muteCenterX, leftButtonCenterY, 0);
             muteButton.refresh();
 
-            float muteImageSize = width/27;
-            float muteCenterX = (15 + width/6)/2;
+            float muteImageSize = 5*leftBottomButtonHeight/8;
+
             muteImage = new Image();
-            muteImage.setTextureHandle(Textures.muteTexture);
             muteImage.setVertices(new float[] {
-                    muteCenterX - muteImageSize/2, height/2 - muteImageSize/2, 0,
-                    muteCenterX - muteImageSize/2, height/2 + muteImageSize/2, 0,
-                    muteCenterX + muteImageSize/2, height/2 + muteImageSize/2, 0,
-                    muteCenterX + muteImageSize/2, height/2 - muteImageSize/2, 0
-            });
-            muteImage.setDrawOrder(new short[] {
-                    0,1,2,0,2,3
+                    muteCenterX - muteImageSize/2, leftButtonCenterY - muteImageSize/2, 0,
+                    muteCenterX - muteImageSize/2, leftButtonCenterY + muteImageSize/2, 0,
+                    muteCenterX + muteImageSize/2, leftButtonCenterY + muteImageSize/2, 0,
+                    muteCenterX + muteImageSize/2, leftButtonCenterY - muteImageSize/2, 0
             });
             if (muted) {
-                muteImage.setUVCoordinates(new float[]{
-                        0, 0,
-                        0, 1,
-                        .5f, 1,
-                        .5f, 0
-                });
+                muteImage.setImage("mute");
             } else {
-                muteImage.setUVCoordinates(new float[]{
-                        .5f, 0,
-                        .5f, 1,
-                        1, 1,
-                        1, 0
-                });
+                muteImage.setImage("volume");
             }
 
             muteImage.refresh();
 
             achievementBox = new RoundedRectangle();
-            achievementBox.setHeight(bottomButtonHeight);
+            achievementBox.setHeight(leftBottomButtonHeight);
             //noinspection SuspiciousNameCombination
-            achievementBox.setWidth(bottomButtonHeight);
+            achievementBox.setWidth(leftBottomButtonHeight);
             achievementBox.setCornerRadius(10f);
             achievementBox.setPrecision(60);
-            achievementBox.setCenter(achievementCenterX, 4*height/5, 0);
+            achievementBox.setCenter(achievementCenterX, leftButtonCenterY, 0);
             achievementBox.refresh();
 
-            float achievementImageWidth = 5*bottomButtonHeight/8;
+            float achievementImageWidth = 5*leftBottomButtonHeight/8;
             float achievementImageHeight = achievementImageWidth * (215f/256f);
             achievementImage = new Image();
-            achievementImage.setTextureHandle(Textures.trophyTexture);
+            achievementImage.setImage("trophy");
             achievementImage.setVertices(new float[] {
-                    achievementCenterX - achievementImageWidth/2, 4*height/5 - achievementImageHeight/2, 0,
-                    achievementCenterX - achievementImageWidth/2, 4*height/5 + achievementImageHeight/2, 0,
-                    achievementCenterX + achievementImageWidth/2, 4*height/5 + achievementImageHeight/2, 0,
-                    achievementCenterX + achievementImageWidth/2, 4*height/5 - achievementImageHeight/2, 0
-            });
-            achievementImage.setDrawOrder(new short[] {
-                    0,1,2,0,2,3
-            });
-            achievementImage.setUVCoordinates(new float[] {
-                    0,0,
-                    0,1,
-                    1,1,
-                    1,0
+                    achievementCenterX - achievementImageWidth/2, leftButtonCenterY - achievementImageHeight/2, 0,
+                    achievementCenterX - achievementImageWidth/2, leftButtonCenterY + achievementImageHeight/2, 0,
+                    achievementCenterX + achievementImageWidth/2, leftButtonCenterY + achievementImageHeight/2, 0,
+                    achievementCenterX + achievementImageWidth/2, leftButtonCenterY - achievementImageHeight/2, 0
             });
             achievementImage.refresh();
+
+            titleCoinBox = new RoundedRectangle();
+            titleCoinBox.setPrecision(60);
+            titleCoinBox.setCornerRadius(10f);
+            titleCoinBox.setCenter(leftButtonCenterX, 4*height/5 + leftBottomButtonHeight/2 + width/128, 0);
+            titleCoinBox.setHeight(leftBottomButtonHeight);
+            titleCoinBox.setWidth(3*leftBottomButtonHeight + width/32);
+            titleCoinBox.refresh();
+
+            titleCoinText = new Text();
+            titleCoinText.setFont("FFF Forward");
+            titleCoinText.setTextSize(3*leftBottomButtonHeight/4);
+            titleCoinText.setText(numOfCoins + "");
+            titleCoinText.setOrigin(leftButtonCenterX - width/200 - titleCoinText.getWidth()/2 - 5*leftBottomButtonHeight/16,  4*height/5 + leftBottomButtonHeight/2 + width/128 - 3*leftBottomButtonHeight/8, 0);
+            titleCoinText.refresh();
+            titleCoin = new Coin();
+            titleCoin.setSize(5*leftBottomButtonHeight/16);
+            titleCoin.setCenter(leftButtonCenterX + width/200 + titleCoinText.getWidth()/2, 4*height/5 + leftBottomButtonHeight/2 + width/128);
+            titleCoin.refresh();
+
+            float coinStoreCenterX = (width - 15 + width/2 + 11*width/64)/2;
+            coinStoreBox = new RoundedRectangle();
+            coinStoreBox.setCenter(coinStoreCenterX, 4*height/5, 0);
+            coinStoreBox.setPrecision(60);
+            coinStoreBox.setCornerRadius(10f);
+            coinStoreBox.setWidth(width/4);
+            coinStoreBox.setHeight(bottomButtonHeight);
+            coinStoreBox.refresh();
+
+            coinStoreText = new Text();
+            coinStoreText.setFont("FFF Forward");
+            coinStoreText.setTextSize(3*leftBottomButtonHeight/4);
+            coinStoreText.setText("Store");
+            coinStoreText.setOrigin(coinStoreCenterX - (coinStoreText.getWidth() + width/64 + 5*leftBottomButtonHeight/8)/2 + width/64 + 5*leftBottomButtonHeight/8, 4*height/5 - 3*leftBottomButtonHeight/8, 0);
+            coinStoreText.refresh();
+
+            coinStoreCoin = new Coin();
+            coinStoreCoin.setSize(5*leftBottomButtonHeight/16);
+            coinStoreCoin.setCenter(coinStoreCenterX - (coinStoreText.getWidth() + width/64 + 5*leftBottomButtonHeight/8)/2 + 5*leftBottomButtonHeight/16, 4*height/5);
+            coinStoreCoin.refresh();
         }
         this.viewProjectionMatrix = viewProjectionMatrix;
         this.height = height;
@@ -2020,6 +2056,21 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
         scoreText.setText(score + "");
         scoreText.setOrigin(width - 25 - scoreText.getWidth(), 3, 0);
         scoreText.refresh();
+
+        coinText = new Text();
+        coinText.setFont("FFF Forward");
+        coinText.setTextSize(50f);
+        coinText.setText(numOfCoins + "");
+        coinText.setOrigin(25, 3, 0);
+        coinText.refresh();
+        indicatorCoin = new Coin();
+        indicatorCoin.setCenter(25 + coinText.getWidth() + 18, 28);
+        indicatorCoin.setSize(15);
+        indicatorCoin.refresh();
+
+        if (showingStore) {
+            storeScreen.refreshDimensions(width, height);
+        }
 
         refreshing = false;
     }
@@ -2191,4 +2242,36 @@ public class MainGameState implements GameState, AdColonyV4VCListener, IUnityAds
             tracker.send(new HitBuilders.ScreenViewBuilder().build());
         }
     }
+
+    public void incrementCoin() {
+        numOfCoins++;
+        coinText = new Text();
+        coinText.setFont("FFF Forward");
+        coinText.setTextSize(50f);
+        coinText.setText(numOfCoins + "");
+        coinText.setOrigin(25, 3, 0);
+        coinText.refresh();
+        indicatorCoin = new Coin();
+        indicatorCoin.setCenter(25 + coinText.getWidth() + 18, 28);
+        indicatorCoin.setSize(15);
+        indicatorCoin.refresh();
+
+        SharedPreferences pref = ((Activity) mainRenderer.getContext()).getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences.Editor edit = pref.edit();
+        edit.putInt("numOfCoins", numOfCoins);
+        edit.apply();
+    }
+
+    public int getNumberOfCoins() {
+        return numOfCoins;
+    }
+
+    public void toggleStore() {
+        scheduledStoreToggle = true;
+    }
+
+    public MainRenderer getMainRenderer() {
+        return mainRenderer;
+    }
+
 }

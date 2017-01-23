@@ -1,6 +1,9 @@
 package com.provectusstudios.transverse;
 
+import android.util.Log;
+
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -25,15 +28,22 @@ public class GateSubSection implements SubSection {
     private float lengthMinimum;
     private float lengthRange;
 
+    private List<Coin> coins = new ArrayList<>();
+
+    private MainGameState mainGameState;
+
     @Override
     public void setDifficulty(float difficulty) {
         this.difficulty = difficulty;
     }
 
     @Override
-    public void draw(RenderType renderType) {
+    public void draw(RenderType renderType, float[] matrix) {
         for (Gate gate : gates) {
             gate.draw(renderType);
+        }
+        for (Coin coin : coins) {
+            coin.draw(matrix);
         }
     }
 
@@ -46,6 +56,14 @@ public class GateSubSection implements SubSection {
 
     @Override
     public boolean handleTouchMove(float startX, float endX, float startY, float endY) {
+        Iterator<Coin> coinIterator = coins.iterator();
+        while (coinIterator.hasNext()) {
+            Coin coin = coinIterator.next();
+            if (coin.containsPoint(endX, endY)) {
+                coinIterator.remove();
+                mainGameState.incrementCoin();
+            }
+        }
         for (Gate gate : gates) {
             if (gate.lineSegmentCrosses(startX, startY, endX, endY)) {
                 return true;
@@ -98,7 +116,9 @@ public class GateSubSection implements SubSection {
 
             spacing = minSpacing + random.nextFloat()*spacingRange;
             gate = genGate(random, lastGateY - spacing);
+
             lastGateY = lastGateY - spacing - gate.getHeight();
+
         } while (lastGateY - spacing >= startY - length);
         lastGateY += gate.getHeight();
         lastGateY += spacing;
@@ -197,6 +217,38 @@ public class GateSubSection implements SubSection {
         this.startY = startY;
     }
 
+    public void generateCoins(Random random) {
+        double coinRandom = Math.abs(random.nextGaussian());
+        int numOfCoins = 0;
+        if (coinRandom > 0.85 - difficulty*.1) {
+            numOfCoins++;
+        }
+        if (coinRandom > 1.35 - difficulty*.1) {
+            numOfCoins++;
+        }
+        if (coinRandom > 1.75 - difficulty*.1) {
+            numOfCoins++;
+        }
+
+        int coinsGenerated = 0;
+
+        float lastGateY = startY;
+        for (Gate gate: gates) {
+            float gateStart = gate.getGateCenterY() + gate.getHeight()/2;
+            float gateEnd = gate.getGateCenterY() - gate.getHeight()/2;
+            if (numOfCoins != 0 && coinsGenerated < numOfCoins && gateEnd <= startY - (length) * (coinsGenerated + 1) / (numOfCoins + 1)) {
+                coinsGenerated++;
+                Coin coin = new Coin();
+                coin.setSize(width / 15);
+                coin.setCenter(startX + width / 15 + (width - 2 * width / 15) * random.nextFloat(), gateStart + (lastGateY - gateStart) / 2);
+                coin.refresh();
+                coins.add(coin);
+            }
+            lastGateY = gateEnd;
+        }
+    }
+
+
     @Override
     //Empties the List of gates
     public void empty() {
@@ -220,5 +272,10 @@ public class GateSubSection implements SubSection {
     public void setInverted(boolean inverted) {
         this.inverted = inverted;
     }
+
+    public void connectToMainGameState(MainGameState mainGameState) {
+        this.mainGameState = mainGameState;
+    }
+
 
 }

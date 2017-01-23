@@ -13,12 +13,8 @@ import android.util.Log;
 public class Textures {
 
     public static int fffForwardFontTexture;
-    public static int trophyTexture;
-    public static int leaderboardTexture;
     public static int particleTexture;
-    public static int fbTexture;
-    public static int twitterTexture;
-    public static int muteTexture;
+    public static int atlasTexture;
 
     private static int maxTextureSize;
 
@@ -30,18 +26,10 @@ public class Textures {
 
         Log.d("Transverse", "Loading font texture");
         fffForwardFontTexture = loadTextureFromResource(R.drawable.forward, context);
-        Log.d("Transverse", "Loading trophy texture");
-        trophyTexture = loadTextureFromResource(R.drawable.trophy, context);
-        Log.d("Transverse", "Loading leaderboard texture");
-        leaderboardTexture = loadTextureFromResource(R.drawable.leaderboard, context);
         Log.d("Transverse", "Loading particle texture");
         particleTexture = loadTextureFromResource(R.drawable.particle, context);
-        Log.d("Transverse", "Loading fb texture");
-        fbTexture = loadTextureFromResource(R.drawable.facebook, context);
-        Log.d("Transverse", "Loading twitter texture");
-        twitterTexture = loadTextureFromResource(R.drawable.twitter, context);
-        Log.d("Transverse", "Loading mute texture");
-        muteTexture = loadTextureFromResource(R.drawable.mute, context);
+        Log.d("Transverse", "Loading atlas texture");
+        atlasTexture = loadTextureFromResource(R.drawable.atlas, context);
     }
 
     private static int loadTextureFromBitmap(Bitmap bitmap) {
